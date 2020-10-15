@@ -67,6 +67,15 @@ export class Pathfinding {
 
     public expand() {
         // idea: create intermediate table, put cheapest there, reuse twice
+        this.db.run(`CREATE TEMPORARY TABLE cheapest(
+            node_list_id INT,
+            entity_id INT, 
+            cell_id INT, 
+            position_X INT, 
+            position_y INT, 
+            g REAL
+        )`);
+
         this.db.run(`
             WITH 
             ordered(node_list_id, entity_id, cell_id, position_x, position_y, g, f_rank) AS (
@@ -82,51 +91,41 @@ export class Pathfinding {
                     node_list AS nl 
                 WHERE 
                     open
-            ),
-            cheapest(entity_id, cell_id, position_x, position_y, g) AS (
-                SELECT 
-                    entity_id,
-                    cell_id,
-                    position_x,
-                    position_y,
-                    g
-                FROM 
-                    node_list AS nl
-                WHERE 
-                    nl.rowid IN (SELECT node_list_id FROM ordered WHERE f_rank = 1) -- open filter was applied before
-                UPDATE 
-                    pathfinding.node_list AS nl 
-                SET 
-                    open = FALSE, 
-                    closed = TRUE 
-                WHERE 
-                    node_list_id IN (SELECT node_list_id FROM ordered WHERE f_rank = 1) -- open filter was applied before
-                RETURNING 
-                    entity_id,
-                    cell_id,
-                    position_x,
-                    position_y,
-                    g
-                --UPDATE 
-                --    pathfinding.node_list AS nl 
-                --SET 
-                --    open = FALSE, 
-                --    closed = TRUE 
-                --WHERE 
-                --    node_list_id IN (SELECT node_list_id FROM ordered WHERE f_rank = 1) -- open filter was applied before
-                --RETURNING 
-                --    entity_id,
-                --    cell_id,
-                --    position_x,
-                --    position_y,
-                --    g
-            ),
-            expand(entity_id, this_id, neighbour_id, neighbour_pos, open, tentative_g, g, destination_x, destination_y) AS (
+            )
+            INSERT INTO cheapest(node_list_id, entity_id, cell_id, position_x, position_y, g)
+            SELECT 
+                nl.node_list_id,
+                nl.entity_id,
+                nl.cell_id,
+                nl.position_x,
+                nl.position_y,
+                nl.g
+            FROM 
+                node_list AS nl
+            WHERE 
+                nl.rowid IN (SELECT node_list_id FROM ordered WHERE f_rank = 1)
+        `);
+
+        this.db.run(`
+            UPDATE 
+                node_list AS nl 
+            SET 
+                open = FALSE, 
+                closed = TRUE 
+            WHERE 
+                node_list_id IN (SELECT node_list_id FROM cheapest)
+        `);
+
+
+        this.db.run(`
+            WITH
+            expand(entity_id, this_id, neighbour_id, neighbour_pos_x, neighbour_pos_y, open, tentative_g, g, destination_x, destination_y) AS (
                 SELECT 
                     this.entity_id   AS entity_id,
                     this.cell_id     AS this_id,
                     ns.cell_id       AS neighbour_id,
-                    ns.position      AS neighbour_pos,
+                    ns.position_x    AS neighbour_pos_x,
+                    ns.position_y    AS neighbour_pos_y,
                     ns.open          AS open,
                     this.g + 1       AS tentative_g,
                     ns.g             AS g,
@@ -134,7 +133,7 @@ export class Pathfinding {
                     ns.destination_y AS destination_y
                 FROM 
                     cheapest AS this
-                    JOIN pathfinding.node_list AS ns 
+                    JOIN node_list AS ns 
                       ON this.entity_id = ns.entity_id
                     JOIN cell_neighbours AS cn 
                       ON this_cell_id = this.cell_id AND ns.cell_id = this.neighbour_id
@@ -142,7 +141,7 @@ export class Pathfinding {
                     NOT ns.closed
                     AND NOT (ns.open AND (this.g + 1) >= ns.g)
             )
-            UPDATE pathfinding.node_list AS nl
+            UPDATE node_list AS nl
             SET 
                 open = TRUE, -- we can safely put them all on true, since we filtered !open before
                 g = e.tentative_g,
@@ -166,71 +165,6 @@ export class Pathfinding {
 
 /*
 
-
-CREATE FUNCTION pathfinding.expand() RETURNS BOOLEAN AS $$
-    WITH 
-    ordered(node_list_id, entity_id, cell_id, position, g, f_rank) AS (
-        SELECT
-            node_list_id,
-            entity_id,
-            cell_id,
-            position,
-            g, 
-            ROW_NUMBER() OVER (PARTITION BY entity_id ORDER BY f ASC) AS f_rank
-        FROM 
-            pathfinding.node_list AS nl 
-        WHERE 
-            open
-    ),
-    cheapest(entity_id, cell_id, position, g) AS (
-        UPDATE 
-            pathfinding.node_list AS nl 
-        SET 
-            open = FALSE, 
-            closed = TRUE 
-        WHERE 
-            node_list_id IN (SELECT node_list_id FROM ordered WHERE f_rank = 1) -- open filter was applied before
-        RETURNING 
-            entity_id,
-            cell_id,
-            position,
-            g
-    ),
-    expand(entity_id, this_id, neighbour_id, neighbour_pos, open, tentative_g, g, destination) AS (
-        SELECT 
-            this.entity_id         AS entity_id,
-            this.cell_id          AS this_id,
-            ns.cell_id            AS neighbour_id,
-            ns.position           AS neighbour_pos,
-            ns.open               AS open,
-            this.g + ns.traversal_cost AS tentative_g,
-            ns.g                  AS g,
-            ns.destination        AS destination
-        FROM 
-            cheapest AS this
-            JOIN pathfinding.node_list AS ns 
-              --ON (ABS(ns.position[0] - this.position[0]), ABS(ns.position[1] - this.position[1])) IN ((0,1), (1,0), (1,1))
-              ON ns.position <-> this.position IN (1, 1.4)
-                 AND this.entity_id = ns.entity_id
-        WHERE
-            NOT ns.closed
-            AND NOT (ns.open AND (this.g + ns.traversal_cost) >= ns.g)
-    )
-    UPDATE pathfinding.node_list AS nl
-    SET 
-        open = TRUE, -- we can safely put them all on true, since we filtered !open before
-        g = e.tentative_g,
-        f = e.tentative_g + pathfinding.h(e.neighbour_pos[0]::int, e.neighbour_pos[1]::int, e.destination[0]::int, e.destination[1]::int),-- pathfinding.h(e.this_pos[0]::int, e.this_pos[1]::int, e.neighbour_pos[0]::int, e.neighbour_pos[1]::int),
-        predecessor = e.this_id
-    FROM 
-        expand AS e
-    WHERE 
-        nl.cell_id = e.neighbour_id 
-        AND nl.entity_id = e.entity_id
-   ;
-   SELECT TRUE
-;
-$$ LANGUAGE sql;
 
 CREATE FUNCTION pathfinding.resolve_paths() 
 RETURNS TABLE(steps INT, entity_id INT, cell_id INT, coord POINT) AS $$ -- coord should have been "position", but that turned out to be a keyword (function)
