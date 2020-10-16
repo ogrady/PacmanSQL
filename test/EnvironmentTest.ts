@@ -67,7 +67,7 @@ describe("Environment", () => {
             const w: number = Math.max(...map.split("\n").map(line => line.length));
             const h: number = map.split("\n").length;
             environment.setMap(map);
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM cell_neighbours") < w*h*8, true, `too many total neighbours`); // can't be arsed to come up with an exact formula rn~
+            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM cell_neighbours") < w*h*4, true, `too many total neighbours`); // can't be arsed to come up with an exact formula rn~
         });
     });
 

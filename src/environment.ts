@@ -68,12 +68,13 @@ export class Environment extends db.DBUnit {
         `);
     }
 
-    public createEntity(x: number, y: number, ẟx: number = 0, ẟy: number = 0) {
+    public createEntity(x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
         console.log(`creating entity at (${x}, ${y}) with movement (${ẟx}, ${ẟy})`);
         this.db.run(`INSERT INTO entities(type) VALUES ('entity')`);
         const res: number = this.getLastId();
         this.db.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${res}, ${x}, ${y})`);
         this.db.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${res}, ${ẟx}, ${ẟy})`);
+        return this.getLastId();
     }
 
     private createMap(w: number, h: number) {

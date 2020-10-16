@@ -14,7 +14,6 @@ export class Pathfinding extends db.DBUnit {
                 destination_y INT,
                 position_x INT,
                 position_y INT,
-                traversal_cost DOUBLE PRECISION, 
                 predecessor INT DEFAULT NULL,
                 g REAL DEFAULT '+infinity',
                 f REAL DEFAULT '+infinity',
@@ -28,15 +27,34 @@ export class Pathfinding extends db.DBUnit {
 
          db.run(`CREATE INDEX node_list_entity_id ON node_list(entity_id)`);
          db.run(`CREATE INDEX node_list_open ON node_list(open)`);
-    }
 
-    private initNodelist(entity_id: number, start: [number, number], destination: [number, number]) {
+        // intermediate tables
+        this.db.run(`CREATE TABLE cheapest(
+            node_list_id INT,
+            entity_id INT, 
+            cell_id INT, 
+            position_x INT, 
+            position_y INT, 
+            g REAL
+        )`);
+
+        this.db.run(`CREATE TABLE complete_paths(
+            steps INT, 
+            entity_id INT, 
+            cell_id INT, 
+            position_x INT, 
+            position_y INT, 
+            predecessor INT
+        )`);
+}
+
+    private initNodelist(entity_id: number, start: [number, number], destination: [number, number]): void {
         this.db.run(`DELETE FROM node_list WHERE entity_id = ${entity_id}`);
         this.db.run(`
             INSERT INTO node_list(entity_id, cell_id, position_x, position_y, start_x, start_y, destination_x, destination_y) 
             SELECT 
                 ${entity_id},
-                c.rowid
+                c.rowid,
                 c.x,
                 c.y,
                 ${start[0]},
@@ -50,7 +68,8 @@ export class Pathfinding extends db.DBUnit {
             `);
     }
 
-    public initSearch(entity_id: number, start: [number, number], destination: [number, number]) {
+    public initSearch(entity_id: number, start: [number, number], destination: [number, number]): void {
+        console.log(`initialising path search for entity ${entity_id}: (${start[0]},${start[1]}) → (${destination[0]}, ${destination[1]})`);
         this.initNodelist(entity_id, start, destination);
         this.db.run(`
             UPDATE 
@@ -60,32 +79,24 @@ export class Pathfinding extends db.DBUnit {
                 f = 0.0,
                 open = TRUE
             WHERE 
-                (nl.position, nl.position_y) = (${start[0]}, ${start[1]})
-                AND nl.entity = ${entity_id}
+                (nl.position_x, nl.position_y) = (${start[0]}, ${start[1]})
+                AND nl.entity_id = ${entity_id}
             `);
     }
 
-    public expand() {
-        // idea: create intermediate table, put cheapest there, reuse twice
-        this.db.run(`CREATE TEMPORARY TABLE cheapest(
-            node_list_id INT,
-            entity_id INT, 
-            cell_id INT, 
-            position_X INT, 
-            position_y INT, 
-            g REAL
-        )`);
+    public expand(): void {
+        this.db.run("DELETE FROM cheapest");
 
         this.db.run(`
             WITH 
             ordered(node_list_id, entity_id, cell_id, position_x, position_y, g, f_rank) AS (
                 SELECT
-                    rowid,
-                    entity_id,
-                    cell_id,
-                    position_x,
-                    position_y
-                    g, 
+                    nl.rowid,
+                    nl.entity_id,
+                    nl.cell_id,
+                    nl.position_x,
+                    nl.position_y,
+                    nl.g, 
                     ROW_NUMBER() OVER (PARTITION BY entity_id ORDER BY f ASC) AS f_rank
                 FROM 
                     node_list AS nl 
@@ -94,7 +105,7 @@ export class Pathfinding extends db.DBUnit {
             )
             INSERT INTO cheapest(node_list_id, entity_id, cell_id, position_x, position_y, g)
             SELECT 
-                nl.node_list_id,
+                nl.rowid,
                 nl.entity_id,
                 nl.cell_id,
                 nl.position_x,
@@ -113,7 +124,7 @@ export class Pathfinding extends db.DBUnit {
                 open = FALSE, 
                 closed = TRUE 
             WHERE 
-                node_list_id IN (SELECT node_list_id FROM cheapest)
+                rowid IN (SELECT node_list_id FROM cheapest)
         `);
 
 
@@ -136,7 +147,7 @@ export class Pathfinding extends db.DBUnit {
                     JOIN node_list AS ns 
                       ON this.entity_id = ns.entity_id
                     JOIN cell_neighbours AS cn 
-                      ON this_cell_id = this.cell_id AND ns.cell_id = this.neighbour_id
+                      ON cn.this_id = this.cell_id AND ns.cell_id = cn.neighbour_id
                 WHERE
                     NOT ns.closed
                     AND NOT (ns.open AND (this.g + 1) >= ns.g)
@@ -153,6 +164,84 @@ export class Pathfinding extends db.DBUnit {
                 nl.cell_id = e.neighbour_id 
                 AND nl.entity_id = e.entity_id
        `);
+    }
+
+    public resolvePaths() {
+        this.db.exec("DELETE FROM complete_paths");
+
+
+        // assuming that all path searches are valid, there will be no check for invalid paths
+        this.db.exec(`
+            WITH RECURSIVE 
+            endpoints(entity_id, cell_id, destination_x, destination_y, position_x, position_y, predecessor) AS (
+                SELECT 
+                    entity_id,
+                    cell_id,
+                    destination_x,
+                    destination_y,
+                    position_x,
+                    position_y,
+                    predecessor
+                FROM 
+                    node_list
+                WHERE 
+                    (destination_x, destination_y) = (position_x, position_y)
+                    AND predecessor IS NOT NULL
+            ),
+            paths(steps, entity_id, cell_id, position_x, position_y, predecessor) AS (
+                SELECT 
+                    0,
+                    entity_id,
+                    cell_id,
+                    position_x,
+                    position_y,
+                    predecessor
+                FROM 
+                    endpoints
+                UNION ALL 
+                SELECT
+                    p.steps + 1,
+                    nl.entity_id,
+                    nl.cell_id,
+                    nl.position_x,
+                    nl.position_y,
+                    nl.predecessor
+                FROM 
+                    node_list AS nl 
+                    JOIN paths AS p 
+                      ON nl.cell_id = p.predecessor
+                         AND nl.entity_id = p.entity_id
+            )
+            INSERT INTO complete_paths(steps, entity_id, cell_id, position_x, position_y, predecessor)
+            SELECT * FROM paths
+        `);
+
+        this.db.run(`
+            DELETE FROM 
+                node_list AS nl 
+            WHERE
+                nl.entity_id IN (SELECT DISTINCT entity_id FROM complete_paths)
+            `);
+
+        this.printQueryResult("SELECT cell_id, position_x, position_y, predecessor, open, closed FROM node_list");
+
+        return this.db.exec(`
+            SELECT 
+                p.steps,
+                p.entity_id,
+                p.cell_id,
+                p.position_x,
+                p.position_y
+            FROM 
+                complete_paths AS p 
+            ORDER BY 
+                p.steps DESC
+            `);
+    }
+
+    public tickPathsearch() {
+        this.expand();
+        return this.resolvePaths();
     }
 }
 

@@ -43,13 +43,18 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
 
     public printQueryResult(sql: string) {
         const res = this.db.exec(sql);
-        this.printResult(res[0].columns, res[0].values);
+        if(res.length > 0) {
+            this.printResult(res[0].columns, res[0].values);  
+        } else {
+            console.log("empty result");  
+        }
+        
     }
 
     public printResult(columns: any, values: any[]) {
         console.log(columns)
         for(const row of values) {
             console.log(row);
-        }
+        }  
     }
 }

@@ -7,18 +7,24 @@ import * as env from "./environment";
 
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
-    environment.createEntity(1,1, 1,0);
-    environment.createEntity(1,1);
-    let res = db.exec(`SELECT * FROM entity_components`);
-    environment.printResult(res[0].columns, res[0].values);
-    environment.updatePositions();
-    res = db.exec(`SELECT * FROM cells`);
-    environment.printResult(res[0].columns, res[0].values);
-    res = db.exec(`SELECT * FROM entity_components`);
-    environment.printResult(res[0].columns, res[0].values);
+    console.log("");
+    console.log("");
+    console.log("");
+    console.log("");
+    console.log("");
+    environment.createEntity(3,0, 1,0);
+    const eid = environment.createEntity(1,1);
+    pathfinding.initSearch(eid, [3, 0], [7, 0]); 
+    //pathfinding.printQueryResult("SELECT * FROM node_list");
+    for(let i = 0; i < 10; i++) {
+        console.log("-------")
+        for(const path of pathfinding.tickPathsearch()) {
 
+            console.log(path);
+        }
 
-    environment.printQueryResult("SELECT * FROM cell_neighbours");
+    }
+
 }
 
 
