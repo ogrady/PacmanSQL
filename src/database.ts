@@ -29,14 +29,20 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         return this.db.exec(`SELECT last_insert_rowid()`)[0].values[0][0];
     }
 
+    public getSingleValue(query: string): any {
+        return this.db.exec(query)[0].values[0][0];
+    }
+
     public clearTables(): void {
+
         for(const table of this.tables) {
+            console.log(`clearing table ${table}`);
             this.db.run(`DELETE FROM ${table}`);    
         }    
     }
 
-    public printQueryResult(db: any, sql: string) {
-        const res = db.exec(sql);
+    public printQueryResult(sql: string) {
+        const res = this.db.exec(sql);
         this.printResult(res[0].columns, res[0].values);
     }
 

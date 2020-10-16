@@ -5,11 +5,11 @@ export class Environment extends db.DBUnit {
     public constructor(db: any) {
         super(db);
 
-        this.tables.concat(["position_components", "movement_components", "cells", "entities"]);
+        this.tables = ["position_components", "movement_components", "cells", "entities"];
 
-        console.log("creating tables");
+        console.log("creating environment tables");
 
-        db.run(`CREATE TABLE cells(
+        this.db.run(`CREATE TABLE cells(
                     x INT, 
                     y INT, 
                     passable BOOLEAN, 
@@ -17,28 +17,28 @@ export class Environment extends db.DBUnit {
                 )`);
         
         // entities
-        db.run(`CREATE TABLE entities(
+        this.db.run(`CREATE TABLE entities(
                     type TEXT
                 )`);
 
         // components
-        db.run(`CREATE TABLE position_components(
+        this.db.run(`CREATE TABLE position_components(
                     entity_id INT, 
                     x         INT, 
                     y         INT,
                     FOREIGN KEY(entity_id) REFERENCES entities(rowid)                
                 )`);
 
-        db.run(`CREATE TABLE movement_components(
+        this.db.run(`CREATE TABLE movement_components(
                     entity_id INT, 
                     ẟx        INT, 
                     ẟy        INT,
                     FOREIGN KEY(entity_id) REFERENCES entities(rowid)
                 )`);
 
-        console.log("creating views");
+        console.log("creating environment views");
         // views
-        db.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy) AS 
+        this.db.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy) AS 
                 SELECT 
                     e.rowid,
                     pc.x, 
@@ -53,7 +53,7 @@ export class Environment extends db.DBUnit {
                       ON mc.entity_id = e.rowid
         `);
 
-        db.run(`CREATE VIEW cell_neighbours(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
+        this.db.run(`CREATE VIEW cell_neighbours(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
                 SELECT 
                     this.rowid,
                     this.x,
@@ -77,6 +77,7 @@ export class Environment extends db.DBUnit {
     }
 
     private createMap(w: number, h: number) {
+        console.log(`creating map of size ${w} x ${h}`);
         this.db.run(`
             WITH RECURSIVE 
             xs(x) AS (
@@ -109,7 +110,7 @@ export class Environment extends db.DBUnit {
                                             .map((row, y) => row.filter(char => char[0].trim())       // filter out all elements that are empty (= passable)
                                             .map(char => [char[1], y] as [number, number]))           // attach y-coordinate and remove block symbol
                                             .reduce((acc, row) => acc.concat(row), []);               // reduce 2d array into sequence
-                                            
+
         const width = Math.max(...lines.map(line => line.length));
         const height = lines.length;
         this.createMap(width, height);
