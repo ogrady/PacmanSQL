@@ -18,7 +18,7 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
     environment.printResult(res[0].columns, res[0].values);
 
 
-    environment.printQueryResult(db, "SELECT * FROM cell_neighbours");
+    environment.printQueryResult("SELECT * FROM cell_neighbours");
 }
 
 

@@ -58,6 +58,19 @@ describe("Environment", () => {
         });
     });
 
+    describe('map neighbours', () => {
+        it("testing number of total cell neighbours", () => {
+            const map = `████
+████
+████
+`;
+            const w: number = Math.max(...map.split("\n").map(line => line.length));
+            const h: number = map.split("\n").length;
+            environment.setMap(map);
+            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM cell_neighbours") < w*h*8, true, `too many total neighbours`); // can't be arsed to come up with an exact formula rn~
+        });
+    });
+
     describe('#updatePositions()', () => {
         it("creating runner", () => {
             environment.clearTables();
