@@ -7,24 +7,15 @@ import * as env from "./environment";
 
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
-    console.log("");
-    console.log("");
-    console.log("");
-    console.log("");
-    console.log("");
     environment.createEntity(3,0, 1,0);
     const eid = environment.createEntity(1,1);
     pathfinding.initSearch(eid, [3, 0], [7, 0]); 
     //pathfinding.printQueryResult("SELECT * FROM node_list");
     for(let i = 0; i < 10; i++) {
-        console.log("-------")
         for(const path of pathfinding.tickPathsearch()) {
-
             console.log(path);
         }
-
     }
-
 }
 
 
@@ -45,24 +36,6 @@ main();
 
 
 async function garbage(db: any) {
-      // NOTE: You can also use new SQL.Database(data) where
-    // data is an Uint8Array representing an SQLite database file
-    
-    // Execute some sql
-    let sqlstr: string = "";
-    sqlstr = "CREATE TABLE hello (a int, b char);";
-    sqlstr += "INSERT INTO hello VALUES (0, 'hello');"
-    sqlstr += "INSERT INTO hello VALUES (1, 'world');"
-    db.run(sqlstr); // Run the query without returning anything
-
-    var res = db.exec("SELECT * FROM hello");
-    /*
-    [
-      {columns:['a','b'], values:[[0,'hello'],[1,'world']]}
-    ]
-    */
-
-    console.log(res);
 
     // Prepare an sql statement
     var stmt = db.prepare("SELECT * FROM hello WHERE a=:aval AND b=:bval");

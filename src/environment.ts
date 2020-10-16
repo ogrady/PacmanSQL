@@ -9,7 +9,7 @@ export class Environment extends db.DBUnit {
 
         console.log("creating environment tables");
 
-        this.db.run(`CREATE TABLE cells(
+        this.run(`CREATE TABLE cells(
                     x INT, 
                     y INT, 
                     passable BOOLEAN, 
@@ -17,19 +17,19 @@ export class Environment extends db.DBUnit {
                 )`);
         
         // entities
-        this.db.run(`CREATE TABLE entities(
+        this.run(`CREATE TABLE entities(
                     type TEXT
                 )`);
 
         // components
-        this.db.run(`CREATE TABLE position_components(
+        this.run(`CREATE TABLE position_components(
                     entity_id INT, 
                     x         INT, 
                     y         INT,
                     FOREIGN KEY(entity_id) REFERENCES entities(rowid)                
                 )`);
 
-        this.db.run(`CREATE TABLE movement_components(
+        this.run(`CREATE TABLE movement_components(
                     entity_id INT, 
                     ẟx        INT, 
                     ẟy        INT,
@@ -38,7 +38,7 @@ export class Environment extends db.DBUnit {
 
         console.log("creating environment views");
         // views
-        this.db.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy) AS 
+        this.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy) AS 
                 SELECT 
                     e.rowid,
                     pc.x, 
@@ -53,7 +53,7 @@ export class Environment extends db.DBUnit {
                       ON mc.entity_id = e.rowid
         `);
 
-        this.db.run(`CREATE VIEW cell_neighbours(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
+        this.run(`CREATE VIEW cell_neighbours(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
                 SELECT 
                     this.rowid,
                     this.x,
@@ -70,16 +70,16 @@ export class Environment extends db.DBUnit {
 
     public createEntity(x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
         console.log(`creating entity at (${x}, ${y}) with movement (${ẟx}, ${ẟy})`);
-        this.db.run(`INSERT INTO entities(type) VALUES ('entity')`);
-        const res: number = this.getLastId();
-        this.db.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${res}, ${x}, ${y})`);
-        this.db.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${res}, ${ẟx}, ${ẟy})`);
-        return this.getLastId();
+        this.run(`INSERT INTO entities(type) VALUES ('entity')`);
+        const res: number = this.db.getLastId();
+        this.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${res}, ${x}, ${y})`);
+        this.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${res}, ${ẟx}, ${ẟy})`);
+        return this.db.getLastId();
     }
 
     private createMap(w: number, h: number) {
         console.log(`creating map of size ${w} x ${h}`);
-        this.db.run(`
+        this.run(`
             WITH RECURSIVE 
             xs(x) AS (
                 SELECT 0
@@ -116,12 +116,12 @@ export class Environment extends db.DBUnit {
         const height = lines.length;
         this.createMap(width, height);
         for(const [x,y] of blocked) {
-            this.db.run(`UPDATE cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
+            this.run(`UPDATE cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
         }
     }
 
     public updatePositions() {
-        this.db.run(`
+        this.run(`
             WITH upd(entity_id, new_x, new_y) AS (
                 SELECT 
                     ec.entity_id,

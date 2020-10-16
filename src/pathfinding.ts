@@ -4,7 +4,7 @@ export class Pathfinding extends db.DBUnit {
     public constructor(db: any) {
         super(db);
 
-        this.db.run(`
+        this.run(`
              CREATE TABLE node_list(
                 entity_id INT,
                 cell_id INT,
@@ -25,11 +25,11 @@ export class Pathfinding extends db.DBUnit {
                 UNIQUE(cell_id, entity_id)
             )`);
 
-         db.run(`CREATE INDEX node_list_entity_id ON node_list(entity_id)`);
-         db.run(`CREATE INDEX node_list_open ON node_list(open)`);
+         this.run(`CREATE INDEX node_list_entity_id ON node_list(entity_id)`);
+         this.run(`CREATE INDEX node_list_open ON node_list(open)`);
 
         // intermediate tables
-        this.db.run(`CREATE TABLE cheapest(
+        this.run(`CREATE TABLE cheapest(
             node_list_id INT,
             entity_id INT, 
             cell_id INT, 
@@ -38,7 +38,7 @@ export class Pathfinding extends db.DBUnit {
             g REAL
         )`);
 
-        this.db.run(`CREATE TABLE complete_paths(
+        this.run(`CREATE TABLE complete_paths(
             steps INT, 
             entity_id INT, 
             cell_id INT, 
@@ -49,8 +49,8 @@ export class Pathfinding extends db.DBUnit {
 }
 
     private initNodelist(entity_id: number, start: [number, number], destination: [number, number]): void {
-        this.db.run(`DELETE FROM node_list WHERE entity_id = ${entity_id}`);
-        this.db.run(`
+        this.run(`DELETE FROM node_list WHERE entity_id = ${entity_id}`);
+        this.run(`
             INSERT INTO node_list(entity_id, cell_id, position_x, position_y, start_x, start_y, destination_x, destination_y) 
             SELECT 
                 ${entity_id},
@@ -71,7 +71,7 @@ export class Pathfinding extends db.DBUnit {
     public initSearch(entity_id: number, start: [number, number], destination: [number, number]): void {
         console.log(`initialising path search for entity ${entity_id}: (${start[0]},${start[1]}) → (${destination[0]}, ${destination[1]})`);
         this.initNodelist(entity_id, start, destination);
-        this.db.run(`
+        this.run(`
             UPDATE 
                 node_list AS nl 
             SET 
@@ -85,9 +85,9 @@ export class Pathfinding extends db.DBUnit {
     }
 
     public expand(): void {
-        this.db.run("DELETE FROM cheapest");
+        this.run("DELETE FROM cheapest");
 
-        this.db.run(`
+        this.run(`
             WITH 
             ordered(node_list_id, entity_id, cell_id, position_x, position_y, g, f_rank) AS (
                 SELECT
@@ -117,7 +117,7 @@ export class Pathfinding extends db.DBUnit {
                 nl.rowid IN (SELECT node_list_id FROM ordered WHERE f_rank = 1)
         `);
 
-        this.db.run(`
+        this.run(`
             UPDATE 
                 node_list AS nl 
             SET 
@@ -128,7 +128,7 @@ export class Pathfinding extends db.DBUnit {
         `);
 
 
-        this.db.run(`
+        this.run(`
             WITH
             expand(entity_id, this_id, neighbour_id, neighbour_pos_x, neighbour_pos_y, open, tentative_g, g, destination_x, destination_y) AS (
                 SELECT 
@@ -167,11 +167,11 @@ export class Pathfinding extends db.DBUnit {
     }
 
     public resolvePaths() {
-        this.db.exec("DELETE FROM complete_paths");
+        this.exec("DELETE FROM complete_paths");
 
 
         // assuming that all path searches are valid, there will be no check for invalid paths
-        this.db.exec(`
+        this.exec(`
             WITH RECURSIVE 
             endpoints(entity_id, cell_id, destination_x, destination_y, position_x, position_y, predecessor) AS (
                 SELECT 
@@ -216,16 +216,14 @@ export class Pathfinding extends db.DBUnit {
             SELECT * FROM paths
         `);
 
-        this.db.run(`
+        this.run(`
             DELETE FROM 
                 node_list AS nl 
             WHERE
                 nl.entity_id IN (SELECT DISTINCT entity_id FROM complete_paths)
             `);
 
-        this.printQueryResult("SELECT cell_id, position_x, position_y, predecessor, open, closed FROM node_list");
-
-        return this.db.exec(`
+        return this.exec(`
             SELECT 
                 p.steps,
                 p.entity_id,
