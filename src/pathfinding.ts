@@ -1,10 +1,10 @@
-export class Pathfinding {
-    private db: any;
+import * as db from "./database";
 
+export class Pathfinding extends db.DBUnit {
     public constructor(db: any) {
-        this.db = db;
+        super(db);
 
-         this.db.run(`
+        this.db.run(`
              CREATE TABLE node_list(
                 entity_id INT,
                 cell_id INT,
