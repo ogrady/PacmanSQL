@@ -7,7 +7,7 @@ import * as env from "./environment";
 
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
-    environment.createEntity(3,0, 1,0);
+    /*environment.createEntity(3,0, 1,0);
     const eid = environment.createEntity(1,1);
     pathfinding.initSearch(eid, [3, 0], [7, 0]); 
     //pathfinding.printQueryResult("SELECT * FROM node_list");
@@ -15,7 +15,8 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
         for(const path of pathfinding.tickPathsearch()) {
             console.log(path);
         }
-    }
+    }*/
+    db.exec()
 }
 
 
