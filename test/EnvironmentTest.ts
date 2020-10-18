@@ -18,7 +18,7 @@ describe("Environment", () => {
 
     after(function () {
         //reset console
-        delete console.log;
+        //delete console.log;
     });
 
     before("init DB", async () => {
@@ -38,14 +38,14 @@ describe("Environment", () => {
             it(`testing configuration ${map} to be of size ${w} x ${h}`, () => {
                 const c = w*h;
                 environment.setMap(map);
-                const count = environment.getSingleValue("SELECT COUNT(*) FROM cells");
-                const width = environment.getSingleValue("SELECT MAX(x) + 1 FROM cells");
-                const height = environment.getSingleValue("SELECT MAX(y) + 1 FROM cells");
+                const count = db.getSingleValue("SELECT COUNT(*) FROM cells");
+                const width = db.getSingleValue("SELECT MAX(x) + 1 FROM cells");
+                const height = db.getSingleValue("SELECT MAX(y) + 1 FROM cells");
                 assert.equal(count, c, `after creating map '${map}' I expected ${c} cells but found ${count}`);
                 assert.equal(height, h, `after creating map '${map}' I expected heigth ${h} but found ${height}`);
                 assert.equal(width, w, `after creating map '${map}' I expected width ${w} but found ${width}`);
                 environment.clearTables();
-                assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM cells"), 0, `should have no cells after clearing map`);
+                assert.equal(db.getSingleValue("SELECT COUNT(*) FROM cells"), 0, `should have no cells after clearing map`);
             });
         }
     });
@@ -54,7 +54,7 @@ describe("Environment", () => {
         it("creating two entities", () => {
             environment.createEntity(2,2,1,0);
             environment.createEntity(2,1);
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM entities"), 2, `should have two entities after calling createEntity twice`);
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM entities"), 2, `should have two entities after calling createEntity twice`);
         });
     });
 
@@ -67,7 +67,7 @@ describe("Environment", () => {
             const w: number = Math.max(...map.split("\n").map(line => line.length));
             const h: number = map.split("\n").length;
             environment.setMap(map);
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM cell_neighbours") < w*h*4, true, `too many total neighbours`); // can't be arsed to come up with an exact formula rn~
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM cell_neighbours") < w*h*4, true, `too many total neighbours`); // can't be arsed to come up with an exact formula rn~
         });
     });
 
@@ -76,17 +76,17 @@ describe("Environment", () => {
             environment.clearTables();
             environment.setMap(`     `)
             environment.createEntity(0,0,1,0);
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (1,0)"), 0, "entity should not be at 1,0 yet");
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (1,0)"), 0, "entity should not be at 1,0 yet");
             environment.updatePositions();
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (1,0)"), 1, "entity should be at 1,0 by now");
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (1,0)"), 1, "entity should be at 1,0 by now");
         });
         it("creating blocked runner", () => {
             environment.clearTables();
             environment.setMap(`     `)
             environment.createEntity(0,0,0,1); // only one row, going down will fail
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (0,1)"), 0, "entity should not be at 1,0 yet");
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (0,1)"), 0, "entity should not be at 1,0 yet");
             environment.updatePositions();
-            assert.equal(environment.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (0,1)"), 0, "entity should still be at 0,0");
+            assert.equal(db.getSingleValue("SELECT COUNT(*) FROM entity_components WHERE (x,y) = (0,1)"), 0, "entity should still be at 0,0");
         });
     });
 

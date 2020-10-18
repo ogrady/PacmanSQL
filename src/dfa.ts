@@ -176,7 +176,7 @@ export class DFA extends DBUnit {
                         WHERE 
                             rowid = (SELECT rowid FROM ??? WHERE entity_id = ${eid} ORDER BY step ASC LIMIT 1`)
             },
-            "eff_pathsearch_simple": (eid: number) => this.db.inner.run(``);
+            "eff_pathsearch_simple": (eid: number) => this.db.inner.run(``)
         };
         this.createUDFs(funs);
     }

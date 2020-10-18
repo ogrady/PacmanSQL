@@ -4,6 +4,8 @@ import initSqlJs, * as sqljs from "sql.js";
 import { DB } from "./database";
 import * as pf from "./pathfinding";
 import * as env from "./environment";
+import * as dfa from "./dfa";
+import * as PIXI from "pixi.js";
 
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
@@ -16,13 +18,37 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
             console.log(path);
         }
     }*/
-    function add(a: number, b: number) {return db.inner.exec("SELECT COUNT(*) FROM entities")}
-    // Specifies the SQL function's name, the number of it's arguments, and the js function to use
-    db.inner.create_function("add_js", add);
-    db.printQueryResult("SELECT add_js(1,1)")
+/*    const app = new PIXI.Application();
+
+    // The application will create a canvas element for you that you
+    // can then insert into the DOM
+    document.body.appendChild(app.view);
+
+    // load the texture we need
+    app.loader.add('bunny', 'bunny.png').load((loader, resources) => {
+        // This creates a texture from a 'bunny.png' image
+        const bunny = new PIXI.Sprite(resources.bunny.texture);
+
+        // Setup the position of the bunny
+        bunny.x = app.renderer.width / 2;
+        bunny.y = app.renderer.height / 2;
+
+        // Rotate around the center
+        bunny.anchor.x = 0.5;
+        bunny.anchor.y = 0.5;
+
+        // Add the bunny to the scene we are building
+        app.stage.addChild(bunny);
+
+        // Listen for frame updates
+        app.ticker.add(() => {
+             // each frame we spin the bunny around a bit
+            bunny.rotation += 0.01;
+        });
+    });*/
 }
 
-
+ 
 async function main() {
     const db = await DB.getInstance();
     const environment: env.Environment = new env.Environment(db);
