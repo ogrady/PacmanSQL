@@ -16,7 +16,10 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
             console.log(path);
         }
     }*/
-    db.exec()
+    function add(a: number, b: number) {return db.inner.exec("SELECT COUNT(*) FROM entities")}
+    // Specifies the SQL function's name, the number of it's arguments, and the js function to use
+    db.inner.create_function("add_js", add);
+    db.printQueryResult("SELECT add_js(1,1)")
 }
 
 

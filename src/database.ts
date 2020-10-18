@@ -40,8 +40,8 @@ export class DB {
         return this.getSingleValue(`SELECT last_insert_rowid()`);
     }
 
-    public getSingleValue(query: string): any {
-        return this.inner.exec(query)[0].values[0][0];
+    public getSingleValue<T>(query: string): T {
+        return this.inner.exec(query)[0].values[0][0] as T;
     }
 }
 
