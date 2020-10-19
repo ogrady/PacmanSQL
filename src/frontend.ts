@@ -1,6 +1,7 @@
 import * as me from "melonjs";
 import * as be from "./backend";
 
+let foo: me.Renderer;
 const Pellet = me.Renderable.extend({
     init : function(coordinate: be.Coordinate, 
                     colour: string = "#fff", 
@@ -41,12 +42,8 @@ const Wall = me.Renderable.extend({
         this.z = z;
         this.colour = colour;
         this.lineWidth = lineWidth;
-        const vectors = [];
-        for(const [x, y] of points) {
-            vectors.push(new me.Vector2d(x, y));
-        }
-        const [ox, oy] = points[0];
-        this.polygon = new me.Polygon(ox, oy, vectors);
+        const vectors = points.map(xy => new me.Vector2d(xy[0], xy[1]))
+        this.polygon = new me.Polygon(x, y, vectors);
     },
 
     update : () => false,

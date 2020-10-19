@@ -7,8 +7,10 @@ import * as env from "./environment";
 import * as dfa from "./dfa";
 import * as fe from "./frontend";
 import * as be from "./backend";
-import * as PIXI from "pixi.js";
 
+export function f() {
+    return 42;
+}
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
 

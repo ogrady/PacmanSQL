@@ -6,7 +6,7 @@
   "scripts": {
     "test": "env TS_NODE_PROJECT=\"tsconfig.testing.json\" mocha --require ts-node/register 'test/**/*.ts'",
     "start:dev": "nodemon",
-    "browserify": "node ./node_modules/browserify/index.js src/index.ts -p [ tsify --noImplicitAny ] > build/bundle.js"
+    "browserify": "node ./node_modules/browserify/index.js src/index.ts -p [ tsify --noImplicitAny ] -o build/bundle.js"
   },
   "author": "",
   "license": "ISC",
