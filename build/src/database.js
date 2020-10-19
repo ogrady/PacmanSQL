@@ -14,47 +14,50 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DBUnit = exports.DB = void 0;
 const sql_js_1 = __importDefault(require("sql.js"));
-class DB {
-    constructor(db) {
-        this.inner = db;
-    }
-    static getInstance() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!DB.instance) {
-                const SQL = yield sql_js_1.default({
-                // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-                // You can omit locateFile completely when running in node
-                //locateFile: (file: string) => `https://sql.js.org/dist/${file}`
-                });
-                DB.instance = new DB(new SQL.Database());
+let DB = /** @class */ (() => {
+    class DB {
+        constructor(db) {
+            this.inner = db;
+        }
+        static getInstance() {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (!DB.instance) {
+                    const SQL = yield sql_js_1.default({
+                    // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+                    // You can omit locateFile completely when running in node
+                    //locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+                    });
+                    DB.instance = new DB(new SQL.Database());
+                }
+                return DB.instance;
+            });
+        }
+        printQueryResult(sql) {
+            const res = this.inner.exec(sql);
+            if (res.length > 0) {
+                this.printResult(res[0].columns, res[0].values);
             }
-            return DB.instance;
-        });
-    }
-    printQueryResult(sql) {
-        const res = this.inner.exec(sql);
-        if (res.length > 0) {
-            this.printResult(res[0].columns, res[0].values);
+            else {
+                console.log("empty result");
+            }
         }
-        else {
-            console.log("empty result");
+        printResult(columns, values) {
+            console.log(columns);
+            for (const row of values) {
+                console.log(row);
+            }
+        }
+        getLastId() {
+            return this.getSingleValue(`SELECT last_insert_rowid()`);
+        }
+        getSingleValue(query) {
+            return this.inner.exec(query)[0].values[0][0];
         }
     }
-    printResult(columns, values) {
-        console.log(columns);
-        for (const row of values) {
-            console.log(row);
-        }
-    }
-    getLastId() {
-        return this.getSingleValue(`SELECT last_insert_rowid()`);
-    }
-    getSingleValue(query) {
-        return this.inner.exec(query)[0].values[0][0];
-    }
-}
+    DB.instance = undefined;
+    return DB;
+})();
 exports.DB = DB;
-DB.instance = undefined;
 class DBUnit {
     constructor(db) {
         this.db = db;

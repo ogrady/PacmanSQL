@@ -1,6 +1,6 @@
-//import * as d from "dom";
+//import * as me from "melonjs";
 
-class Game {
+export class Stage {
 	private width: number;
 	private height: number;
 

@@ -5,6 +5,8 @@ import { DB } from "./database";
 import * as pf from "./pathfinding";
 import * as env from "./environment";
 import * as dfa from "./dfa";
+import * as fe from "./frontend";
+import * as be from "./backend";
 import * as PIXI from "pixi.js";
 
 
@@ -46,6 +48,7 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
             bunny.rotation += 0.01;
         });
     });*/
+    new fe.Stage(10,10);
 }
 
  
