@@ -48,7 +48,7 @@ async function test(db: any, environment: env.Environment, pathfinding: pf.Pathf
             bunny.rotation += 0.01;
         });
     });*/
-    new fe.Stage(10,10);
+    //new fe.Stage(10,10);
 }
 
  

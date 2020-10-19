@@ -13,15 +13,16 @@
 
 me.device.onReady(function () {
     // initialize the display canvas once the device/browser is ready
-    if (!me.video.init(600, 480, {parent : "screen", scale : "auto"})) {
+    if (!me.video.init(1024, 600, {wrapper : "screen", scale : "auto", scaleMethod : "flex-width"})) {
         alert("Your browser does not support HTML5 canvas.");
         return;
     }
 
     // add a gray background to the default Stage
-    me.game.world.addChild(new me.ColorLayer("background", "#202020"));
+    me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
 
     // add a font text display object
+    /*
     me.game.world.addChild(new me.Text(100, 100, {
         font: "Arial",
         size: 16,
@@ -30,10 +31,20 @@ me.device.onReady(function () {
         textAlign : "center",
         text : "Hello World !"
     }));
+    */
+
+    function blockedArea(blockedCoordinates) {
+
+    }
+
+
+    me.game.world.addChild(
+        new Wall([[1,1], [100,1], [100,100], [51,100], [51,51], [1, 51]])
+    );
+
+    me.game.world.addChild(
+        new Pellet([50, 50])
+    );
+
 });
-/*
-var c = document.getElementById("canvas");
-var ctx = c.getContext("2d");
-ctx.fillRect(20, 20, 150, 100);
-*/
 </script>
