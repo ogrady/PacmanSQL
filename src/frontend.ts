@@ -1,7 +1,6 @@
 import * as me from "melonjs";
 import * as be from "./backend";
 
-let foo: me.Renderer;
 const Pellet = me.Renderable.extend({
     init : function(coordinate: be.Coordinate, 
                     colour: string = "#fff", 
