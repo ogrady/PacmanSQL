@@ -13,7 +13,7 @@
 
 me.device.onReady(() => {
     // initialize the display canvas once the device/browser is ready
-    if (!me.video.init(1024, 600, {wrapper : "screen", scale : "auto", scaleMethod : "flex-width"})) {
+    if (!me.video.init(800, 600, {wrapper : "screen", scale : "auto", scaleMethod : "flex-width"})) {
         alert("Your browser does not support HTML5 canvas.");
         return;
     }

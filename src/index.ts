@@ -19,7 +19,7 @@ async function main() {
     const db = await DB.getInstance();
     const environment: env.Environment = new env.Environment(db);
     const pathfinding: pf.Pathfinding = new pf.Pathfinding(db);
-
+ 
     const map = `
 ███ ███ ███
 █        █

@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es6",                          
+    "target": "es5",                          
     "module": "commonjs",                    
     "lib": ["es2016", "dom"],                     
     "allowJs": true,
-    "outDir": "build",                          
+    "outDir": "js",                          
     "rootDir": "src",
     "strict": true,         
     "noImplicitAny": false,
@@ -12,5 +12,5 @@
     "resolveJsonModule": true,
     "typeRoots": [ "./types", "./node_modules/@types"]
   },
-  "exclude": ["node_modules", "typings"]
+  "exclude": ["node_modules", "typings", "build", "js", "Gruntfile.js", "test", "tasks"]
 }
