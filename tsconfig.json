@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",                          
-    "module": "commonjs",                    
-    "lib": ["es2016", "dom"],                     
+    "target": "ESNext",                          
+    "module": "commonjs",                   
+    "lib": ["esnext", "dom"],                     
     "allowJs": true,
     "outDir": "js",                          
     "rootDir": "src",
@@ -12,5 +12,12 @@
     "resolveJsonModule": true,
     "typeRoots": [ "./types", "./node_modules/@types"]
   },
-  "exclude": ["node_modules", "typings", "build", "js", "Gruntfile.js", "test", "tasks"]
+  "exclude": [
+    "node_modules", 
+    "typings", 
+    "build", 
+    "js", 
+    "test",
+    "babel.config.js", "webpack.config.js"
+  ]
 }
