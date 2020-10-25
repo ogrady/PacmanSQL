@@ -26,7 +26,7 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js']
   },
   devServer: {
-    contentBase: './dist'
+    contentBase: './build'
   },
   module: {
     rules: [{
@@ -56,7 +56,8 @@ module.exports = {
       use: [
         { loader: "file-loader"}
       ]
-    }]
+    }
+    ]
   },
   plugins: [
     new HtmlWebpackPlugin({

@@ -15,8 +15,8 @@ class PlayScreen extends me.Stage {
         const map: string = `
 ███ ███ ███
 █        █
-████████████`
-        //const db = await DB.getInstance();
+████████████`;
+        const db = await DB.getInstance();
         //this.environment = new env.Environment(db);
         //this.pathfinding = new pf.Pathfinding(db);       
         //this.environment.setMap(map);
