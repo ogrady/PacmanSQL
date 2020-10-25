@@ -6,7 +6,7 @@
   "scripts": {
     "test": "env TS_NODE_PROJECT=\"tsconfig.testing.json\" mocha --require ts-node/register 'test/**/*.ts'",
     "start:dev": "nodemon",
-    "dev": "webpack-dev-server --open",
+    "dev": "cp node_modules/sql.js/dist/sql-wasm.wasm build/sql-wasm.wasm; webpack-dev-server --open",
     "clean": "rm -r ./js; rm -r ./build; echo 1"
   },
   "author": "",
