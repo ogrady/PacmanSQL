@@ -120,6 +120,10 @@ export class Environment extends db.DBUnit {
         }
     }
 
+    public getBlockedAreas() {
+        return this.exec(`SELECT x,y FROM cells WHERE NOT passable`);
+    }
+
     public updatePositions() {
         this.run(`
             WITH upd(entity_id, new_x, new_y) AS (

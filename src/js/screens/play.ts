@@ -19,7 +19,10 @@ class PlayScreen extends me.Stage {
         const db = await DB.getInstance();
         //this.environment = new env.Environment(db);
         //this.pathfinding = new pf.Pathfinding(db);       
-        //this.environment.setMap(map);
+        this.environment?.setMap(map);
+
+        const x = this.environment?.getBlockedAreas();
+        console.log(x);
 
         // reset the score
         game.data.score = 0;
