@@ -22,11 +22,6 @@ class ScoreItem extends me.Renderable {
         }
         return false;
     }
-
-    draw(context: any) {
-        // draw it baby !
-    }
-
 }
 
 class HUD extends me.Container {

@@ -21,7 +21,7 @@ class PlayScreen extends me.Stage {
     private pacman: fe.Pacman | undefined;
     //private pathfinding: pf.Pathfinding | undefined;
 
-    async onResetEvent() {
+    public async onResetEvent() {
         const map: string = `
 ███ ███ ███
 █        █
@@ -42,7 +42,7 @@ class PlayScreen extends me.Stage {
         const w: number = 50;
         const h: number = 50;
         for(const [x,y] of this.environment?.getBlockedAreas()) {
-            const [ax, ay] = [x * w + 1, y * h + 1];
+            const [ax, ay] = [x * w + 0.5*w, y * h + 0.5*h];
             me.game.world.addChild(new fe.Wall([
                 [ax, ay],         // top left 
                 [ax + w, ay],     // top right
@@ -57,7 +57,7 @@ class PlayScreen extends me.Stage {
         me.input.bindKey(me.input.KEY.D, Direction.Right);
 
         // reset the score
-        game.data.score = 0;
+        game.data.score = 10;
 
         // Add our HUD to the game world, add it last so that this is on top of the rest.
         // Can also be forced by specifying a "Infinity" z value to the addChild function.
@@ -66,13 +66,13 @@ class PlayScreen extends me.Stage {
 
         me.game.world.addChild(this.HUD);
         me.game.world.addChild(new fe.Pellet([50, 50]));
-        me.game.world.addChild(new fe.Wall([[1,1], [100,1], [100,100], [51,100], [51,51], [1, 51]]));
         me.game.world.addChild(this.pacman);
     }
 
     public update() {
-        super.update();
-        if(this.environment === undefined) return; // early bail if async DB init has not finished yet
+        const res = super.update();
+        
+        if(this.environment === undefined) return res; // early bail if async DB init has not finished yet
 
         let x: number = 0;
         let y: number = 0;
@@ -95,9 +95,8 @@ class PlayScreen extends me.Stage {
             if(eid == this.playerId) {
                 this.pacman?.setPosition(x, y);
             }
-            
         }
-        
+        return res;
     }
 
     onDestroyEvent() {

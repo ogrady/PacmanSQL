@@ -8,15 +8,19 @@ export class Pacman extends me.Renderable {
     }
 
     public setPosition(x: number, y: number): void {
-        this.pos.x = x;
-        this.pos.y = y;
-        this.isDirty = true;
+        if(x != this.pos.x || y != this.pos.y) {
+            this.pos.x = x;
+            this.pos.y = y;
+            this.isDirty = true;
+        }
     }
 
     public draw(renderer: any) {
+        console.log(this.pos);
         renderer.setColor("#fcba03");
         renderer.fillEllipse(this.pos.x, this.pos.y, 20, 20);
     }
+
 }
 
 export class Pellet extends me.Renderable {
@@ -42,7 +46,6 @@ export class Wall extends me.Renderable {
                        z: number = 100, 
                        lineWidth: number = 2) 
     {
-        // position, width, height
         const xs: number[] = points.map(p => p[0]);
         const ys: number[] = points.map(p => p[1]);
         const x: number = Math.min(...xs);
