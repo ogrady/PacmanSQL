@@ -1,5 +1,8 @@
 import * as db from "./database";
 import * as fp from "./functools";
+import * as be from "./backend";
+
+export type EntityState = [number, number, number, number, number];
 
 export class Environment extends db.DBUnit {
     public constructor(db: any) {
@@ -120,8 +123,22 @@ export class Environment extends db.DBUnit {
         }
     }
 
-    public getBlockedAreas() {
-        return this.exec(`SELECT x,y FROM cells WHERE NOT passable`);
+    public getBlockedAreas(): be.Coordinate[]  {
+        return this.exec(`SELECT x,y FROM cells WHERE NOT passable`)[0].values;
+    }
+
+    public getDimensions(): be.Dimensions {
+        return this.exec(`SELECT MAX(x) AS width, MAX(y) AS height FROM cells`)[0].values;
+    }
+
+    public setPlayerMovement(playerId: number, x: number, y: number): void {
+        this.run(`
+            UPDATE movement_components SET
+                ẟx = ${x},
+                ẟy = ${y}
+            WHERE 
+                entity_id = ${playerId}
+            `);
     }
 
     public updatePositions() {
@@ -149,6 +166,10 @@ export class Environment extends db.DBUnit {
             WHERE 
                 pc.entity_id = upd.entity_id
         `);
+    }
+
+    public getStates(): EntityState[] {
+        return this.exec(`SELECT entity_id, x, y, ẟx, ẟy FROM entity_components`)[0].values ?? [];
     }
 
 }
