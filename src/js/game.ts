@@ -3,6 +3,7 @@ class Game {
     constructor() {
         this.data = {
             score : 666,
+            resolution: [640,480]
         };
     }
 }

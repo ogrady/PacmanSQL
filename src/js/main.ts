@@ -1,18 +1,19 @@
 declare var require: any;
-require('../css/main.css');
+require("../css/main.css");
 
-import 'regenerator-runtime/runtime'; // fix a babel problem with async functions
-//const initSqlJs = require('sql.js');
+import "regenerator-runtime/runtime"; // fix a babel problem with async functions
+//const initSqlJs = require("sql.js");
 import initSqlJs, * as sqljs from "sql.js";
+import game from './game';
 import { DB } from "./database";
 import * as pf from "./pathfinding";
 import * as env from "./environment";
 import * as dfa from "./dfa";
 import * as fe from "./frontend";
 import * as be from "./backend";
-import me from './me';
+import me from "./me";
 
-import PlayScreen from './screens/play';
+import PlayScreen from "./screens/play";
 
 async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
     me.game.world.addChild(
@@ -43,7 +44,10 @@ class Bootstrap {
 
     constructor() {
         // Initialize the video.
-        if (!me.video.init(640, 480, { wrapper : "screen", scale : "flex-width", renderer: me.video.CANVAS })) {
+
+        if (!me.video.init(game.data.resolution[0], game.data.resolution[1], 
+            { wrapper : "screen", scale : "flex-width", renderer: me.video.CANVAS })) 
+        {
             alert("Your browser does not support HTML5 canvas.");
             return;
         }
@@ -51,7 +55,7 @@ class Bootstrap {
         // add "#debug" to the URL to enable the debug Panel
         if (document.location.hash === "#debug") {
             console.log("show debug");
-            window.addEventListener('load', () => {
+            window.addEventListener("load", () => {
                 me.plugin.register.defer(this, me.debug.Panel, "debug", me.input.KEY.V);
             });
         }
@@ -101,6 +105,6 @@ class Bootstrap {
     }
 }
 
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
     Bootstrap.boot();
 });

@@ -128,7 +128,7 @@ export class Environment extends db.DBUnit {
     }
 
     public getDimensions(): be.Dimensions {
-        return this.exec(`SELECT MAX(x) AS width, MAX(y) AS height FROM cells`)[0].values;
+        return this.exec(`SELECT MAX(x) AS width, MAX(y) AS height FROM cells`)[0].values[0];
     }
 
     public setPlayerMovement(playerId: number, x: number, y: number): void {

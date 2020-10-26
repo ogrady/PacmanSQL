@@ -23,8 +23,8 @@ class PlayScreen extends me.Stage {
 
     public async onResetEvent() {
         const map: string = `
-███ ███ ███
-█        █
+███ ███ ██ █
+█          █
 ████████████`;
         const db = await DB.getInstance();
         this.environment = new env.Environment(db);
@@ -38,11 +38,14 @@ class PlayScreen extends me.Stage {
         console.log("Show play screen");
         me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
 
-        const dim: be.Dimensions = this.environment.getDimensions();
-        const w: number = 50;
-        const h: number = 50;
+        const resolution: be.Dimensions = game.data.resolution;
+        const gridDim: be.Dimensions = this.environment.getDimensions();
+        const w: number = resolution[0] / gridDim[0];
+        const h: number = resolution[1] / gridDim[1];
+        console.log(resolution, gridDim);
+        console.log(w,h);
         for(const [x,y] of this.environment?.getBlockedAreas()) {
-            const [ax, ay] = [x * w + 0.5*w, y * h + 0.5*h];
+            const [ax, ay] = [x * w + 0.25*w, y * h + 0.25*h];
             me.game.world.addChild(new fe.Wall([
                 [ax, ay],         // top left 
                 [ax + w, ay],     // top right
