@@ -22,14 +22,10 @@ class PlayScreen extends me.Stage {
     //private pathfinding: pf.Pathfinding | undefined;
 
     public async onResetEvent() {
-        const map: string = `
-███ ███ ██ █
-█          █
-████████████`;
         const db = await DB.getInstance();
         this.environment = new env.Environment(db);
         //this.pathfinding = new pf.Pathfinding(db);       
-        this.environment?.setMap(map);
+        this.environment?.setMap(game.data.map);
 
         this.playerId = this.environment?.createEntity(3, 3);
 
@@ -40,12 +36,12 @@ class PlayScreen extends me.Stage {
 
         const resolution: be.Dimensions = game.data.resolution;
         const gridDim: be.Dimensions = this.environment.getDimensions();
-        const w: number = resolution[0] / gridDim[0];
-        const h: number = resolution[1] / gridDim[1];
+        const w: number = resolution[0] / (gridDim[0] + 1);
+        const h: number = resolution[1] / (gridDim[1] + 1);
         console.log(resolution, gridDim);
         console.log(w,h);
         for(const [x,y] of this.environment?.getBlockedAreas()) {
-            const [ax, ay] = [x * w + 0.25*w, y * h + 0.25*h];
+            const [ax, ay] = [x * 0.5 * w + 0.25*w, y *0.5 * h + 0.25*h];
             me.game.world.addChild(new fe.Wall([
                 [ax, ay],         // top left 
                 [ax + w, ay],     // top right
