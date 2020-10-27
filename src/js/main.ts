@@ -15,31 +15,6 @@ import me from "./me";
 
 import PlayScreen from "./screens/play";
 
-async function test(db: any, environment: env.Environment, pathfinding: pf.Pathfinding) {
-    me.game.world.addChild(
-        new fe.Wall([[1,1], [100,1], [100,100], [51,100], [51,51], [1, 51]])
-    );
-
-    me.game.world.addChild(
-        new fe.Pellet([50, 50])
-    );
-}
-
- 
-async function main() {
-    const db = await DB.getInstance();
-    const environment: env.Environment = new env.Environment(db);
-    const pathfinding: pf.Pathfinding = new pf.Pathfinding(db);
- 
-    const map = `
-███ ███ ███
-█        █
-████████████`
-    environment.setMap(map);
-    test(db, environment, pathfinding);
-}
-
-
 class Bootstrap {
 
     constructor() {

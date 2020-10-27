@@ -10,18 +10,49 @@ export class Environment extends db.DBUnit {
 
         this.tables = ["position_components", "movement_components", "cells", "entities"];
 
+        console.log("creating enums");
+
+        // enums
+        this.run(`CREATE TABLE item_types(
+                    name TEXT
+                )`);
+
+        this.run(`INSERT INTO item_types(name) VALUES
+                    ('pellet'),
+                    ('power pellet'),
+                    ('cherry')
+                `);
+
+        this.run(`CREATE TABLE entity_types(
+                    name TEXT
+                )`);
+
+        this.run(`INSERT INTO entity_types(name) VALUES
+                    ('pacman'),
+                    ('ghost')
+                `);
+
         console.log("creating environment tables");
 
+        // tables
         this.run(`CREATE TABLE cells(
                     x INT, 
                     y INT, 
                     passable BOOLEAN, 
-                    UNIQUE(x, y)
+                    content INT DEFAULT 1, -- pellet
+                    UNIQUE(x, y),
+                    FOREIGN KEY(content) REFERENCES item_types(rowid)
                 )`);
         
         // entities
         this.run(`CREATE TABLE entities(
                     type TEXT
+                )`);
+
+        this.run(`CREATE TABLE type_component(
+                    entity_id INT,
+                    type      INT,
+                    FOREIGN KEY(type) REFERENCES entity_types(rowid)
                 )`);
 
         // components
@@ -41,19 +72,24 @@ export class Environment extends db.DBUnit {
 
         console.log("creating environment views");
         // views
-        this.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy) AS 
+        this.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy, type) AS 
                 SELECT 
                     e.rowid,
                     pc.x, 
                     pc.y,
                     mc.ẟx,
-                    mc.ẟy
+                    mc.ẟy,
+                    et.name
                 FROM 
                     entities AS e 
                     LEFT JOIN position_components AS pc 
                       ON pc.entity_id = e.rowid
                     LEFT JOIN movement_components AS mc 
                       ON mc.entity_id = e.rowid
+                    LEFT JOIN type_component AS tc 
+                      ON tc.entity_id = e.rowid
+                    LEFT JOIN entity_types AS et 
+                      ON tc.type = et.rowid
         `);
 
         this.run(`CREATE VIEW cell_neighbours(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
@@ -68,6 +104,57 @@ export class Environment extends db.DBUnit {
                     cells AS this
                     JOIN cells AS that
                       ON (ABS(this.x - that.x), ABS(this.y - that.y)) IN (VALUES (1,0), (0,1))
+        `);
+
+        // like cell_neighbours, but includes center cell, could probably be solved more elegantly
+        this.run(`CREATE VIEW cell_neighbourhoods(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
+                SELECT 
+                    this.rowid,
+                    this.x,
+                    this.y,
+                    that.rowid,
+                    that.x,
+                    that.y
+                FROM 
+                    cells AS this
+                    JOIN cells AS that
+                      ON (ABS(this.x - that.x), ABS(this.y - that.y)) IN (VALUES (1,0), (0,1), (0,0))
+        `);
+
+        // does not work yet, because at the time of writing sqlite3 did not 
+        // support having aggregates or windows within recursive queries. 
+        // General idea has been successfully tested in postgresql.
+        this.run(`CREATE VIEW compound_walls(cell_id, x, y, component_id) AS 
+            WITH RECURSIVE comps(cell_id, component_id) AS (
+                SELECT 
+                    rowid AS cell_id,
+                    rowid AS component_id
+                FROM 
+                    cells
+                WHERE 
+                    NOT passable
+                UNION 
+                SELECT 
+                    comps.cell_id,
+                    MAX(neighbour_id)
+                FROM 
+                    comps
+                    JOIN cell_neighbourhoods AS cn 
+                      ON comps.cell_id = cn.this_id
+                GROUP BY 
+                    comps.cell_id
+            ) 
+            SELECT 
+                comps.cell_id,
+                MAX(c.x), -- THE 
+                MAX(c.y), -- THE 
+                MAX(comps.component_id)
+            FROM 
+                comps 
+                JOIN cells AS c 
+                  ON comps.cell_id = cells.rowid
+            GROUP BY 
+                comps.cell_id
         `);
     }
 
@@ -103,6 +190,10 @@ export class Environment extends db.DBUnit {
                 xs,
                 ys
         `);
+    }
+
+    public getConnectedComponents() {
+        return this.exec(`SELECT * FROM connected_components`);
     }
 
     public setMap(descriptor: string) {
@@ -165,7 +256,18 @@ export class Environment extends db.DBUnit {
                 upd
             WHERE 
                 pc.entity_id = upd.entity_id
-        `);
+        `);/*
+        this.run(`
+            WITH obp AS (
+                SELECT 
+
+            )
+            UPDATE cells 
+                SET content = NULL 
+            WHERE 
+                rowid IN (SELECT rowid FROM position_components)
+
+            `)*/
     }
 
     public getStates(): EntityState[] {
