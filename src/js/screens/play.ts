@@ -20,22 +20,29 @@ class PlayScreen extends me.Stage {
     private environment: env.Environment | undefined;
     private playerId: number = 0;
     private pacman: fe.Pacman | undefined;
+    private entities: {[key: number]: any};
     //private pathfinding: pf.Pathfinding | undefined;
 
+    public constructor() {
+        super();
+        this.entities = {};        
+    }
+
     public async onResetEvent() {
-        const db = await DB.getInstance();
-        this.environment = new env.Environment(db);
-        //this.pathfinding = new pf.Pathfinding(db);       
-        this.environment?.setMap(game.data.map);
-
-        const [spawnX, spawnY] = game.data.spawn;
-        this.playerId = this.environment?.createEntity(spawnX, spawnY);
-
-        
-
         console.log("Show play screen");
-        me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
 
+        const db = await DB.getInstance();
+        const [spawnX, spawnY] = game.data.spawn;
+
+        this.environment = new env.Environment(db);
+        this.environment?.setMap(game.data.map);       
+
+        me.input.bindKey(me.input.KEY.W, Direction.Up);
+        me.input.bindKey(me.input.KEY.S, Direction.Down);
+        me.input.bindKey(me.input.KEY.A, Direction.Left);
+        me.input.bindKey(me.input.KEY.D, Direction.Right);
+        
+        me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
         
         const [resWidth, resHeigth] = game.data.resolution;
         const [gridWidth, gridHeight] = this.environment.getDimensions();
@@ -43,7 +50,7 @@ class PlayScreen extends me.Stage {
         const h: number = resHeigth / (gridHeight + 1);
         game.data.blockSize = [w,h];
         for(const [x,y] of this.environment?.getBlockedAreas()) {
-            const [ax, ay] = [x * 0.5 * w + 0.25*w, y *0.5 * h + 0.25*h];
+            const [ax, ay] = [x * 0.5 * w + 0.25 * w, y * 0.5 * h + 0.25 * h];
             me.game.world.addChild(new fe.Wall([
                 [ax, ay],         // top left 
                 [ax + w, ay],     // top right
@@ -52,20 +59,14 @@ class PlayScreen extends me.Stage {
             ]));    
         }
 
-        me.input.bindKey(me.input.KEY.W, Direction.Up);
-        me.input.bindKey(me.input.KEY.S, Direction.Down);
-        me.input.bindKey(me.input.KEY.A, Direction.Left);
-        me.input.bindKey(me.input.KEY.D, Direction.Right);
+        const playerId: number = this.environment?.createEntity(spawnX, spawnY);       
+        this.pacman = new fe.Pacman(
+            playerId,
+            [spawnX * w + 0.5 * w,
+             spawnY * h + 0.5 * h], w);
 
-        // Add our HUD to the game world, add it last so that this is on top of the rest.
-        // Can also be forced by specifying a "Infinity" z value to the addChild function.
-        this.HUD = new HUD();
-        this.pacman = new fe.Pacman([
-            spawnX * w + 0.5 * w,
-            spawnY * h + 0.5 * h
-        ]);
+        this.entities[playerId] = this.pacman;
 
-        me.game.world.addChild(this.HUD);
         me.game.world.addChild(new fe.Pellet([50, 50]));
         me.game.world.addChild(this.pacman);
     }
@@ -88,16 +89,17 @@ class PlayScreen extends me.Stage {
         } 
 
         if(x != 0 || y != 0) {
-            this.environment?.setPlayerMovement(this.playerId, x, y)
+            this.environment?.setPlayerMovement(this.pacman?.dbId as number, x, y)
         }
 
         this.environment?.updatePositions();
         const [blockWidth, blockHeight] = game.data.blockSize;
         for(const [eid, x, y, dx, dy] of this.environment?.getStates()) {
-            if(eid == this.playerId) {
+            const entity = this.entities[eid];
+            if(entity !== undefined) {
                 this.pacman?.setPosition(
-                    x * blockWidth + 0.5 * blockWidth, 
-                    y * blockHeight + 0.5 * blockHeight
+                    x * blockWidth + 1 * blockWidth, 
+                    y * blockHeight + 1 * blockHeight
                 );
             }
         }

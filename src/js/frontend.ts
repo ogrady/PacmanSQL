@@ -1,9 +1,18 @@
 import me from './me';
 import * as be from "./backend";
 
-export class Pacman extends me.Renderable {
-    public constructor(position: be.Coordinate, z: number = 1000) {
-        super(position[0], position[1]);
+class DBRenderable extends me.Renderable {
+    public readonly dbId: number;
+
+    public constructor(dbId: number, x: number, y: number, width: number, height: number) {
+        super(x, y, width, height);
+        this.dbId = dbId;
+    }
+}
+
+export class Pacman extends DBRenderable {
+    public constructor(dbId: number, position: be.Coordinate, radius: number, z: number = 1000) {
+        super(dbId, position[0], position[1], radius, radius);
         this.z = z;
     }
 
@@ -20,7 +29,6 @@ export class Pacman extends me.Renderable {
         renderer.setColor("#fcba03");
         renderer.fillEllipse(this.pos.x, this.pos.y, 20, 20);
     }
-
 }
 
 export class Pellet extends me.Renderable {
