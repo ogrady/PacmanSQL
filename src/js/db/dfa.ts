@@ -1,5 +1,5 @@
 import { DB, DBUnit } from "./database";
-import * as fp from "./functools";
+import * as fp from "../functools";
 
 export class DFA extends DBUnit {
     public constructor(db: DB) {

@@ -2,7 +2,7 @@ import me from '../me';
 import game from "../game";
 import HUD from "../entities/HUD";
 
-import { DB } from "../database";
+import { DB } from "../db/database";
 import * as env from "../environment";
 import * as fe from "../frontend";
 

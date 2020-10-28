@@ -5,12 +5,6 @@ import "regenerator-runtime/runtime"; // fix a babel problem with async function
 //const initSqlJs = require("sql.js");
 import initSqlJs, * as sqljs from "sql.js";
 import game from './game';
-import { DB } from "./database";
-import * as pf from "./pathfinding";
-import * as env from "./environment";
-import * as dfa from "./dfa";
-import * as fe from "./frontend";
-import * as be from "./backend";
 import me from "./me";
 
 import PlayScreen from "./screens/play";
