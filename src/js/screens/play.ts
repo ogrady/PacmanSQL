@@ -3,7 +3,7 @@ import game from "../game";
 import HUD from "../entities/HUD";
 
 import { DB } from "../db/database";
-import * as env from "../environment";
+import * as env from "../db/environment";
 import * as fe from "../frontend";
 
 enum Direction {

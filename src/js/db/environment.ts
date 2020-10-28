@@ -1,6 +1,6 @@
-import * as db from "./db/database";
-import * as fp from "./functools";
-import * as t from "./types";
+import * as db from "./database";
+import * as fp from "../functools";
+import * as t from "../types";
 
 export type EntityState = [number, number, number, number, number];
 
