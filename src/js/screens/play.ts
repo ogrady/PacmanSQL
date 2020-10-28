@@ -21,21 +21,30 @@ class PlayScreen extends me.Stage {
     private playerId: number = 0;
     private pacman: fe.Pacman | undefined;
     private entities: {[key: number]: any};
+    private pellets: {[key: string]: any};
     //private pathfinding: pf.Pathfinding | undefined;
 
     public constructor() {
         super();
-        this.entities = {};        
+        this.entities = {};
+        this.pellets = {};
+    }
+
+    private hashCoordinate(x: number, y: number): string {
+        return `${x}|${y}`; // hurrr
     }
 
     public async onResetEvent() {
         console.log("Show play screen");
 
         const db = await DB.getInstance();
-        const [spawnX, spawnY] = game.data.spawn;
-
         this.environment = new env.Environment(db);
-        this.environment?.setMap(game.data.map);       
+
+        const e: env.Environment = this.environment;
+
+        const [spawnX, spawnY] = game.data.spawn;
+       
+        e.setMap(game.data.map);       
 
         me.input.bindKey(me.input.KEY.W, Direction.Up);
         me.input.bindKey(me.input.KEY.S, Direction.Down);
@@ -45,11 +54,11 @@ class PlayScreen extends me.Stage {
         me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
         
         const [resWidth, resHeigth] = game.data.resolution;
-        const [gridWidth, gridHeight] = this.environment.getDimensions();
+        const [gridWidth, gridHeight] = e.getDimensions();
         const w: number = resWidth / (gridWidth + 1);
         const h: number = resHeigth / (gridHeight + 1);
         game.data.blockSize = [w,h];
-        for(const [x,y] of this.environment?.getBlockedAreas()) {
+        for(const [x,y] of e.getBlockedAreas()) {
             const [ax, ay] = [x * 0.5 * w + 0.25 * w, y * 0.5 * h + 0.25 * h];
             me.game.world.addChild(new fe.Wall([
                 [ax, ay],         // top left 
@@ -59,7 +68,7 @@ class PlayScreen extends me.Stage {
             ]));    
         }
 
-        const playerId: number = this.environment?.createEntity(spawnX, spawnY);       
+        const playerId: number = e.createPlayer(spawnX, spawnY);       
         this.pacman = new fe.Pacman(
             playerId,
             [spawnX * w + 0.5 * w,
@@ -67,7 +76,12 @@ class PlayScreen extends me.Stage {
 
         this.entities[playerId] = this.pacman;
 
-        me.game.world.addChild(new fe.Pellet([50, 50]));
+        for(const [x,y] of e.getWalkableAreas()) {
+            const pellet = new fe.Pellet([x * w + 0.5 * w, y * h + 0.5 * h]);
+            this.pellets[this.hashCoordinate(x,y)] = pellet;
+            me.game.world.addChild(pellet);
+        }
+        
         me.game.world.addChild(this.pacman);
     }
 
@@ -92,7 +106,7 @@ class PlayScreen extends me.Stage {
             this.environment?.setPlayerMovement(this.pacman?.dbId as number, x, y)
         }
 
-        this.environment?.updatePositions();
+        const clearedCells: [number, number, number][] = this.environment?.updatePositions();
         const [blockWidth, blockHeight] = game.data.blockSize;
         for(const [eid, x, y, dx, dy] of this.environment?.getStates()) {
             const entity = this.entities[eid];
@@ -103,6 +117,10 @@ class PlayScreen extends me.Stage {
                 );
             }
         }
+        for(const [cid, x, y] of clearedCells) {
+            me.game.world.removeChild(this.pellets[this.hashCoordinate(x, y)]);
+        }
+
         return res;
     }
 

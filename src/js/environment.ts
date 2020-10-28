@@ -35,6 +35,11 @@ export class Environment extends db.DBUnit {
         console.log("creating environment tables");
 
         // tables
+        this.run(`CREATE TABLE game_state(
+                    level INT,
+                    score INT
+                )`);
+
         this.run(`CREATE TABLE cells(
                     x INT, 
                     y INT, 
@@ -49,7 +54,7 @@ export class Environment extends db.DBUnit {
                     type TEXT
                 )`);
 
-        this.run(`CREATE TABLE type_component(
+        this.run(`CREATE TABLE type_components(
                     entity_id INT,
                     type      INT,
                     FOREIGN KEY(type) REFERENCES entity_types(rowid)
@@ -86,7 +91,7 @@ export class Environment extends db.DBUnit {
                       ON pc.entity_id = e.rowid
                     LEFT JOIN movement_components AS mc 
                       ON mc.entity_id = e.rowid
-                    LEFT JOIN type_component AS tc 
+                    LEFT JOIN type_components AS tc 
                       ON tc.entity_id = e.rowid
                     LEFT JOIN entity_types AS et 
                       ON tc.type = et.rowid
@@ -158,13 +163,22 @@ export class Environment extends db.DBUnit {
         `);
     }
 
-    public createEntity(x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
-        console.log(`creating entity at (${x}, ${y}) with movement (${ẟx}, ${ẟy})`);
+    private createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
+        console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy})`);
         this.run(`INSERT INTO entities(type) VALUES ('entity')`);
-        const res: number = this.db.getLastId();
-        this.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${res}, ${x}, ${y})`);
-        this.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${res}, ${ẟx}, ${ẟy})`);
-        return this.db.getLastId();
+        const eid: number = this.db.getLastId();
+        this.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${eid}, ${x}, ${y})`);
+        this.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${eid}, ${ẟx}, ${ẟy})`);
+        this.run(`INSERT INTO type_components(entity_id, type) VALUES (${eid}, (SELECT rowid FROM entity_types WHERE name = '${type}'))`);
+        return eid;
+    }
+
+    public createPlayer(x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
+        return this.createEntity("pacman", x, y, ẟx, ẟy);
+    }
+
+    public createGhost(x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
+        return this.createEntity("ghost", x, y, ẟx, ẟy);
     }
 
     private createMap(w: number, h: number) {
@@ -198,9 +212,8 @@ export class Environment extends db.DBUnit {
 
     public setMap(descriptor: string) {
         // yes, this may have been easier to read with two for-loops, but I am polishing my FP a bit.
-        const lines = descriptor.split("\n");
+        const lines = descriptor.split("\n").filter(row => row.trim().length > 0); // // remove rows that are completely empty
         const blocked: [number, number][] = lines
-                                            .filter(row => row)                                       // remove rows that are completely empty
                                             .map(row => fp.zip(row.split(""), fp.range(row.length)))  // give each symbol their x-coordinate
                                             .map((row, y) => row.filter(char => char[0].trim())       // filter out all elements that are empty (= passable)
                                             .map(char => [char[1], y] as [number, number]))           // attach y-coordinate and remove block symbol
@@ -215,7 +228,11 @@ export class Environment extends db.DBUnit {
     }
 
     public getBlockedAreas(): be.Coordinate[]  {
-        return this.exec(`SELECT x,y FROM cells WHERE NOT passable`)[0].values;
+        return this.get(`SELECT x,y FROM cells WHERE NOT passable`);
+    }
+
+    public getWalkableAreas(): be.Coordinate[] {
+         return this.get(`SELECT x,y FROM cells WHERE passable`);
     }
 
     public getDimensions(): be.Dimensions {
@@ -232,7 +249,7 @@ export class Environment extends db.DBUnit {
             `);
     }
 
-    public updatePositions() {
+    public updatePositions(): [number, number, number][] {
         this.run(`
             WITH upd(entity_id, new_x, new_y) AS (
                 SELECT 
@@ -256,22 +273,59 @@ export class Environment extends db.DBUnit {
                 upd
             WHERE 
                 pc.entity_id = upd.entity_id
-        `);/*
+        `);
+
+        this.run(`CREATE TEMPORARY TABLE cleared_cells(
+                cell_id INT,
+                x INT,
+                y INT
+            )`);
+
         this.run(`
+            INSERT INTO cleared_cells(cell_id, x ,y)
             WITH obp AS (
                 SELECT 
-
+                    entity_id,
+                    x,
+                    y
+                FROM 
+                    entity_components AS ec
+                WHERE 
+                    type = 'pacman'
             )
-            UPDATE cells 
-                SET content = NULL 
-            WHERE 
-                rowid IN (SELECT rowid FROM position_components)
+            SELECT 
+                c.rowid,
+                c.x,
+                c.y
+            FROM 
+                cells AS c 
+                JOIN obp
+                  ON (c.x, c.y) = (obp.x, obp.y)
+            WHERE
+                content IS NOT NULL
+            `);
 
-            `)*/
+        this.run(`
+            UPDATE cells SET 
+                content = NULL 
+            WHERE 
+                rowid IN (SELECT cell_id FROM cleared_cells)
+            `);
+
+        this.run(`
+            UPDATE game_state SET 
+                score = score + (SELECT COUNT(cell_id) FROM cleared_cells)
+            `);
+
+        const clearedCells: [number, number, number][] = this.get(`SELECT cell_id, x, y FROM cleared_cells`);
+
+        this.run(`DROP TABLE cleared_cells`);
+
+        return clearedCells;
     }
 
     public getStates(): EntityState[] {
-        return this.exec(`SELECT entity_id, x, y, ẟx, ẟy FROM entity_components`)[0].values ?? [];
+        return this.get(`SELECT entity_id, x, y, ẟx, ẟy FROM entity_components`);
     }
 
 }

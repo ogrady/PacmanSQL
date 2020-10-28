@@ -65,6 +65,13 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         return this.db.inner.exec(sql);
     }
 
+    public get(sql: string): any[] {
+        const res = this.exec(sql);
+        return res === undefined || res[0] === undefined 
+                ? []
+                : res[0].values ?? []
+    }
+
     public run(sql: string) {
         this.db.inner.run(sql);
     }
