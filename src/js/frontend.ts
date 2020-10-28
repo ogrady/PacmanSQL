@@ -1,5 +1,5 @@
 import me from './me';
-import * as be from "./backend";
+import * as t from "./types";
 
 class DBRenderable extends me.Renderable {
     public readonly dbId: number;
@@ -11,7 +11,7 @@ class DBRenderable extends me.Renderable {
 }
 
 export class Pacman extends DBRenderable {
-    public constructor(dbId: number, position: be.Coordinate, radius: number, z: number = 1000) {
+    public constructor(dbId: number, position: t.Coordinate, radius: number, z: number = 1000) {
         super(dbId, position[0], position[1], radius, radius);
         this.z = z;
     }
@@ -32,7 +32,7 @@ export class Pacman extends DBRenderable {
 }
 
 export class Pellet extends me.Renderable {
-    public constructor(coordinate: be.Coordinate, 
+    public constructor(coordinate: t.Coordinate, 
                        colour: string = "#fff", 
                        radius: number = 7, 
                        z: number = 1000)
@@ -49,7 +49,7 @@ export class Pellet extends me.Renderable {
 }
 
 export class Wall extends me.Renderable {
-    public constructor(points: be.Point[], 
+    public constructor(points: t.Point[], 
                        colour: string = "#2a9adb", 
                        z: number = 100, 
                        lineWidth: number = 2) 

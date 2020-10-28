@@ -5,7 +5,6 @@ import HUD from "../entities/HUD";
 import { DB } from "../database";
 import * as env from "../environment";
 import * as fe from "../frontend";
-import * as be from "../backend";
 
 enum Direction {
   None, // me.input.bindKey doesn't seem to like to be bound to the first enum value (= 0?), so here is a noop.

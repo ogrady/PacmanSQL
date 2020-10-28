@@ -1,6 +1,6 @@
 import * as db from "./database";
 import * as fp from "./functools";
-import * as be from "./backend";
+import * as t from "./types";
 
 export type EntityState = [number, number, number, number, number];
 
@@ -227,15 +227,15 @@ export class Environment extends db.DBUnit {
         }
     }
 
-    public getBlockedAreas(): be.Coordinate[]  {
+    public getBlockedAreas(): t.Coordinate[]  {
         return this.get(`SELECT x,y FROM cells WHERE NOT passable`);
     }
 
-    public getWalkableAreas(): be.Coordinate[] {
+    public getWalkableAreas(): t.Coordinate[] {
          return this.get(`SELECT x,y FROM cells WHERE passable`);
     }
 
-    public getDimensions(): be.Dimensions {
+    public getDimensions(): t.Dimensions {
         return this.exec(`SELECT MAX(x) AS width, MAX(y) AS height FROM cells`)[0].values[0];
     }
 
