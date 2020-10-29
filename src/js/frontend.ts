@@ -4,12 +4,101 @@ import * as t from "./types";
 
 export const BACKGROUND_COLOUR = "#00121c";
 
-class DBRenderable extends me.Renderable {
+export abstract class DBRenderable extends me.Renderable {
     public readonly dbId: number;
 
-    public constructor(dbId: number, x: number, y: number, width: number, height: number) {
+    public constructor(dbId: number, x: number, y: number, width: number, height: number, z: number = 1000) {
         super(x, y, width, height);
         this.dbId = dbId;
+        this.z = z;
+    }
+
+    public setPosition(x: number, y: number): void {
+        if(x != this.pos.x || y != this.pos.y) {
+            if(x < this.pos.x) this.faceLeft();
+            else if (x > this.pos.x) this.faceRight();
+            else if (y < this.pos.y) this.faceUp();
+            else if (y > this.pos.y) this.faceDown();
+            this.pos.x = x;
+            this.pos.y = y;
+            this.isDirty = true;
+        }
+    }
+
+    protected abstract faceLeft();
+    protected abstract faceRight();
+    protected abstract faceUp();
+    protected abstract faceDown();
+}
+
+export class Ghost extends DBRenderable {
+    private colour: string;
+    private eyeOffset: [number, number];
+    private eyeSize: number;
+    private pupilSize: number;
+
+    public constructor(dbId: number, position: t.Coordinate, radius: number, colour = "#f00") {
+        super(dbId, position[0], position[1], radius, radius);
+        this.colour = colour;
+        this.eyeSize = 10;
+        this.pupilSize = 4;
+        this.eyeOffset = [0, 0]
+
+        this.skirt = new me.Polygon(position[0], position[1],
+            [[0, 10], 
+             [0.25 * radius, -10], 
+             [0.25 * radius, 10],
+             [0.5 * radius, -10]
+            ].map(([x,y]) => new me.Vector2d(x, y))
+        );
+
+        this.faceDown();
+    }
+
+    protected faceLeft(){
+        this.eyeOffset = [-this.pupilSize,0];
+    }
+
+    protected faceRight(){
+        this.eyeOffset = [this.pupilSize,0];
+    }
+
+    protected faceUp(){
+        this.eyeOffset = [0,-this.pupilSize];
+    }
+
+    protected faceDown(){
+        this.eyeOffset = [0,this.pupilSize];
+    }
+
+    private drawEye(renderer: any, x: number, y: number) {
+        const [xoff, yoff] = this.eyeOffset;
+        renderer.setColor("#fff")
+        renderer.fillEllipse(x, y - 3, this.eyeSize, this.eyeSize);
+        renderer.setColor("#00f")
+        renderer.fillEllipse(x + xoff, y + yoff, this.pupilSize, this.pupilSize);
+    }
+
+    private drawEyes(renderer: any) {
+        renderer.setColor("#fff")
+        this.drawEye(renderer, this.pos.x - this.eyeSize, this.pos.y - 3);
+        this.drawEye(renderer, this.pos.x + this.eyeSize, this.pos.y - 3);
+        /*
+        renderer.fillEllipse(this.pos.x - eyeSize, this.pos.y - 3, eyeSize, eyeSize);
+        renderer.fillEllipse(this.pos.x + eyeSize, this.pos.y - 3, eyeSize, eyeSize);
+
+        renderer.setColor("#00f")
+        const [xoff, yoff] = this.eyeOffset;
+        renderer.fillEllipse(this.pos.x - eyeSize + xoff, this.pos.y - 3 + yoff, pupilSize, pupilSize);
+        renderer.fillEllipse(this.pos.x + eyeSize + xoff, this.pos.y - 3 + yoff, pupilSize, pupilSize);*/
+    }
+
+    public draw(renderer: any) {
+        renderer.setColor(this.colour);
+        renderer.fillEllipse(this.pos.x, this.pos.y, 25, 25);
+        renderer.setColor("#fff");
+        this.drawEyes(renderer);
+        //renderer.stroke(new me.Rectangle(this.pos.x, this.pos.y, 10, 10));
     }
 }
 
@@ -18,9 +107,8 @@ export class Pacman extends DBRenderable {
     private mouthFrame: number;
     private mouthRotation: number;
 
-    public constructor(dbId: number, position: t.Coordinate, radius: number, z: number = 1000) {
+    public constructor(dbId: number, position: t.Coordinate, radius: number) {
         super(dbId, position[0], position[1], radius, radius);
-        this.z = z;
 
         const targetFrameCount = 12;
         const [minY, maxY] = [2, 10];
@@ -41,23 +129,26 @@ export class Pacman extends DBRenderable {
         return this.mouths[this.mouthFrame].clone();
     }
 
-    public setPosition(x: number, y: number): void {
-        if(x != this.pos.x || y != this.pos.y) {
-            if(x < this.pos.x) this.mouthRotation = Math.PI; // 180°
-            else if (x > this.pos.x) this.mouthRotation = 0;
-            else if (y < this.pos.y) this.mouthRotation = 270 * Math.PI /180; // 270°
-            else if (y > this.pos.y) this.mouthRotation = 90 * Math.PI / 180; // 90°
-            this.pos.x = x;
-            this.pos.y = y;
-            this.isDirty = true;
-        }
+    protected faceLeft(){
+        this.mouthRotation = Math.PI; // 180°
+    }
+
+    protected faceRight(){
+        this.mouthRotation = 0;
+    }
+
+    protected faceUp(){
+        this.mouthRotation = 270 * Math.PI /180; // 270°
+    }
+
+    protected faceDown(){
+        this.mouthRotation = 90 * Math.PI / 180; // 90°
     }
 
     public draw(renderer: any) {
         renderer.setColor("#fcba03");
         renderer.fillEllipse(this.pos.x, this.pos.y, 25, 25);
         renderer.setColor(BACKGROUND_COLOUR);
-        //renderer.setColor("#ff0000");
         const mouth = this.nextFrame();
         mouth.points.map((v: any) => v.rotate(this.mouthRotation));
         mouth.pos.x = this.pos.x;

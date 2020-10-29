@@ -20,7 +20,7 @@ class PlayScreen extends me.Stage {
     private HUD: HUD | undefined;
     private environment: env.Environment | undefined;
     private playerId: number = 0;
-    private pacman: fe.Pacman | undefined;
+    private pacman: fe.DBRenderable | undefined;
     private entities: {[key: number]: any};
     private pellets: {[key: string]: any};
     private blockSize: t.Dimensions;
@@ -97,8 +97,17 @@ class PlayScreen extends me.Stage {
     }
 
     private spawnGhosts(e: env.Environment, count: number): void {
+        const [w, h] = this.blockSize;
         for(let i = 0; i < count; i++) {
-            const [spawnX, spawnY] = fp.choice(this.map.espawns)
+            const [spawnX, spawnY] = fp.choice(this.map.espawns);
+
+            const ghostId = e.createGhost(spawnX, spawnY);
+            console.log(ghostId);
+            const ghost = new fe.Ghost(ghostId,
+                [spawnX * w + 0.5 * w,
+                 spawnY * h + 0.5 * h], w);
+            this.entities[ghostId] = ghost;
+            me.game.world.addChild(ghost);
         }
     }
 
@@ -118,6 +127,7 @@ class PlayScreen extends me.Stage {
         const [w, h] = this.blockSize;
         this.spawnPlayer(e);
         this.spawnPellets(w, h, e);
+        this.spawnGhosts(e, 1);
 
         this.doKeyBinds();
     }
@@ -148,7 +158,7 @@ class PlayScreen extends me.Stage {
         for(const [eid, x, y, dx, dy] of this.environment?.getStates()) {
             const entity = this.entities[eid];
             if(entity !== undefined) {
-                this.pacman?.setPosition(
+                entity.setPosition(
                     x * blockWidth + 1 * blockWidth, 
                     y * blockHeight + 1 * blockHeight
                 );
