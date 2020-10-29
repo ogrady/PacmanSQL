@@ -33,4 +33,7 @@ which should start the game within your browser.
 
 **A:** That is just the interfacing towards the player. The game itself could entirely be run within the database and controlled by submitting SQL statements to move the player around and display intermediate states. But that is just not fun! The game is implemented in SQL and driven and rendered using Typescript.
 
+**Q:** Okay, but I *still* see some Typescript?
+
+**A:** Alright, it is true that some functionality is still done in the frontend (for example at the time of writing: spawning actors at random locations). This is subject to change and will be moved to the database once I have finished the more pressing issues.
 ---

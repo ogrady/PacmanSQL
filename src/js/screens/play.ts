@@ -6,6 +6,7 @@ import { DB } from "../db/database";
 import * as env from "../db/environment";
 import * as fe from "../frontend";
 import * as t from "../types";
+import * as fp from "../functools";
 
 enum Direction {
   None, // me.input.bindKey doesn't seem to like to be bound to the first enum value (= 0?), so here is a noop.
@@ -93,6 +94,12 @@ class PlayScreen extends me.Stage {
 
         this.entities[playerId] = this.pacman;
         me.game.world.addChild(this.pacman);
+    }
+
+    private spawnGhosts(e: env.Environment, count: number): void {
+        for(let i = 0; i < count; i++) {
+            const [spawnX, spawnY] = fp.choice(this.map.espawns)
+        }
     }
 
 
