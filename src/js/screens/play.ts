@@ -33,7 +33,16 @@ class PlayScreen extends me.Stage {
         return `${x}|${y}`; // hurrr
     }
 
+    onload() {
+        //
+        console.log("loading...")
+        
+    }
+
+
     public async onResetEvent() {
+
+        //me.audio.play("bgm");
         console.log("Show play screen");
 
         const db = await DB.getInstance();
@@ -120,6 +129,7 @@ class PlayScreen extends me.Stage {
         for(const [cid, x, y] of clearedCells) {
             try {
                 me.game.world.removeChild(this.pellets[this.hashCoordinate(x, y)]);
+                me.audio.play("pellet");
             } catch {
                 console.error(`Tried to remove non-existing pellet at (${x}, ${y})`);
             }

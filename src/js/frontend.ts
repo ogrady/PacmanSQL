@@ -23,7 +23,7 @@ export class Pacman extends DBRenderable {
         this.z = z;
 
         const targetFrameCount = 12;
-        const [minY, maxY] = [2, 20];
+        const [minY, maxY] = [2, 10];
         this.mouths = [];
         const d = (maxY - minY) / targetFrameCount + minY;
         // bit of a dirty hack because I can not be arsed to properly use melonjs sprites with my DB backend... 
@@ -31,7 +31,7 @@ export class Pacman extends DBRenderable {
         // each triangle is longer than Pacman's width / 2, so drawing that triangle over the yellow body 
         // in the background colour will look like an open mouth.
         this.mouths = fp.range(targetFrameCount)
-                      .map(i => new me.Polygon(0,0, [[0,0],[radius/2, -i*d], [radius/2, i*d]].map(([x,y]) => new me.Vector2d(x, y))));
+                      .map(i => new me.Polygon(0,0, [[0,0],[radius/3+2, -i*d], [radius/3+2, i*d]].map(([x,y]) => new me.Vector2d(x, y))));
         this.mouthFrame = 0;
         this.mouthRotation = 0;
     }
@@ -45,7 +45,7 @@ export class Pacman extends DBRenderable {
         if(x != this.pos.x || y != this.pos.y) {
             if(x < this.pos.x) this.mouthRotation = Math.PI; // 180°
             else if (x > this.pos.x) this.mouthRotation = 0;
-            else if (y < this.pos.y) this.mouthRotation = 270 * Math.PI / 180; // 270°
+            else if (y < this.pos.y) this.mouthRotation = 270 * Math.PI /180; // 270°
             else if (y > this.pos.y) this.mouthRotation = 90 * Math.PI / 180; // 90°
             this.pos.x = x;
             this.pos.y = y;
