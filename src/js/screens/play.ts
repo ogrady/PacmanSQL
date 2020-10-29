@@ -40,17 +40,18 @@ class PlayScreen extends me.Stage {
         this.environment = new env.Environment(db);
 
         const e: env.Environment = this.environment;
+        
+        const map = game.data.maps[0];
+        const [spawnX, spawnY] = map.spawn;
+        e.setMap(map.shape);       
 
-        const [spawnX, spawnY] = game.data.spawn;
-       
-        e.setMap(game.data.map);       
 
         me.input.bindKey(me.input.KEY.W, Direction.Up);
         me.input.bindKey(me.input.KEY.S, Direction.Down);
         me.input.bindKey(me.input.KEY.A, Direction.Left);
         me.input.bindKey(me.input.KEY.D, Direction.Right);
         
-        me.game.world.addChild(new me.ColorLayer("background", "#00121c"));
+        me.game.world.addChild(new me.ColorLayer("background", fe.BACKGROUND_COLOUR));
         
         const [resWidth, resHeigth] = game.data.resolution;
         const [gridWidth, gridHeight] = e.getDimensions();
@@ -102,7 +103,7 @@ class PlayScreen extends me.Stage {
         } 
 
         if(x != 0 || y != 0) {
-            this.environment?.setPlayerMovement(this.pacman?.dbId as number, x, y)
+            this.environment?.setPlayerMovement(this.pacman?.dbId as number, x, y);
         }
 
         const clearedCells: [number, number, number][] = this.environment?.updatePositions();
@@ -117,7 +118,11 @@ class PlayScreen extends me.Stage {
             }
         }
         for(const [cid, x, y] of clearedCells) {
-            me.game.world.removeChild(this.pellets[this.hashCoordinate(x, y)]);
+            try {
+                me.game.world.removeChild(this.pellets[this.hashCoordinate(x, y)]);
+            } catch {
+                console.error(`Tried to remove non-existing pellet at (${x}, ${y})`);
+            }
         }
 
         return res;

@@ -2,10 +2,15 @@ class Game {
     public data: any;
     constructor() {
         this.data = {
-            score : 666,
+        	/*resources: [
+			    { name : "pacman", type : "image", src : "data/img/pacman.png" }
+			],*/
+            score : 0,
             resolution: [800,800],
-            spawn: [5,6],
-            map: `
+            
+            maps: [
+            	{ spawn: [5,6],
+            	  shape: `
 xxxxxxxxxxx
 x    x    x
 x xx x xx x
@@ -17,6 +22,12 @@ x x xxx x x
 x         x
 xxxxxxxxxxx
 `
+},
+{
+	spawn: [4,5],
+	shape: ``
+}
+]
         };
     }
 }

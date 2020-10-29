@@ -63,27 +63,29 @@ export class Environment extends db.DBUnit {
         // components
         this.run(`CREATE TABLE position_components(
                     entity_id INT, 
-                    x         INT, 
-                    y         INT,
+                    x         FLOAT, 
+                    y         FLOAT,
                     FOREIGN KEY(entity_id) REFERENCES entities(rowid)                
                 )`);
 
         this.run(`CREATE TABLE movement_components(
                     entity_id INT, 
-                    ẟx        INT, 
-                    ẟy        INT,
+                    ẟx        FLOAT, 
+                    ẟy        FLOAT,
+                    speed     FLOAT,
                     FOREIGN KEY(entity_id) REFERENCES entities(rowid)
                 )`);
 
         console.log("creating environment views");
         // views
-        this.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy, type) AS 
+        this.run(`CREATE VIEW entity_components(entity_id, x, y, ẟx, ẟy, speed, type) AS 
                 SELECT 
                     e.rowid,
                     pc.x, 
                     pc.y,
                     mc.ẟx,
                     mc.ẟy,
+                    mc.speed,
                     et.name
                 FROM 
                     entities AS e 
@@ -111,19 +113,27 @@ export class Environment extends db.DBUnit {
                       ON (ABS(this.x - that.x), ABS(this.y - that.y)) IN (VALUES (1,0), (0,1))
         `);
 
-        // like cell_neighbours, but includes center cell, could probably be solved more elegantly
+        // like cell_neighbours, but includes center cell
         this.run(`CREATE VIEW cell_neighbourhoods(this_id, this_x, this_y, neighbour_id, neighbour_x, neighbour_y) AS 
                 SELECT 
-                    this.rowid,
-                    this.x,
-                    this.y,
-                    that.rowid,
-                    that.x,
-                    that.y
+                    this_id, 
+                    this_x, 
+                    this_y, 
+                    neighbour_id, 
+                    neighbour_x, 
+                    neighbour_y
                 FROM 
-                    cells AS this
-                    JOIN cells AS that
-                      ON (ABS(this.x - that.x), ABS(this.y - that.y)) IN (VALUES (1,0), (0,1), (0,0))
+                    cell_neighbours
+                UNION ALL 
+                SELECT 
+                    rowid,
+                    x,
+                    y,
+                    rowid,
+                    x,
+                    y
+                FROM 
+                    cells
         `);
 
         // does not work yet, because at the time of writing sqlite3 did not 
@@ -163,12 +173,12 @@ export class Environment extends db.DBUnit {
         `);
     }
 
-    private createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0): number {
-        console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy})`);
+    private createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0, speed = 0.04): number {
+        console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}) and speed ${speed}`);
         this.run(`INSERT INTO entities(type) VALUES ('entity')`);
         const eid: number = this.db.getLastId();
         this.run(`INSERT INTO position_components(entity_id, x, y) VALUES (${eid}, ${x}, ${y})`);
-        this.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy) VALUES (${eid}, ${ẟx}, ${ẟy})`);
+        this.run(`INSERT INTO movement_components(entity_id, ẟx, ẟy, speed) VALUES (${eid}, ${ẟx}, ${ẟy}, ${speed})`);
         this.run(`INSERT INTO type_components(entity_id, type) VALUES (${eid}, (SELECT rowid FROM entity_types WHERE name = '${type}'))`);
         return eid;
     }
@@ -242,8 +252,8 @@ export class Environment extends db.DBUnit {
     public setPlayerMovement(playerId: number, x: number, y: number): void {
         this.run(`
             UPDATE movement_components SET
-                ẟx = ${x},
-                ẟy = ${y}
+                ẟx = ${x} * speed,
+                ẟy = ${y} * speed
             WHERE 
                 entity_id = ${playerId}
             `);
@@ -254,13 +264,13 @@ export class Environment extends db.DBUnit {
             WITH upd(entity_id, new_x, new_y) AS (
                 SELECT 
                     ec.entity_id,
-                    c.x,
-                    c.y
+                    ec.x + ec.ẟx,
+                    ec.y + ec.ẟy
                 FROM
                     entity_components AS ec 
                     JOIN cells AS c 
-                      ON ec.x + ec.ẟx = c.x AND 
-                         ec.y + ec.ẟy = c.y
+                      ON ROUND(ec.x + ec.ẟx + 0.0) = c.x AND 
+                         ROUND(ec.y + ec.ẟy + 0.0) = c.y
                 WHERE 
                     c.passable
             )
@@ -283,11 +293,11 @@ export class Environment extends db.DBUnit {
 
         this.run(`
             INSERT INTO cleared_cells(cell_id, x ,y)
-            WITH obp AS (
+            WITH obp(entity_id, x, y) AS (
                 SELECT 
                     entity_id,
-                    x,
-                    y
+                    ROUND(x),
+                    ROUND(y)
                 FROM 
                     entity_components AS ec
                 WHERE 
