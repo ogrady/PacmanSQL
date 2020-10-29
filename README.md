@@ -1,6 +1,21 @@
 # PacmanSQL
 This is an ongoing effort to implement Pacman in SQL.
 
+## Setup
+To set the game up run 
+
+```
+npm install
+```
+
+to install all dependencies. Then start the game using
+
+```
+npm run dev
+```
+
+which should start the game within your browser.
+
 ## FAQ
 **Q:** Why?
 
