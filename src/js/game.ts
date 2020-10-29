@@ -11,7 +11,8 @@ class Game {
             resolution: [800,800],
             
             maps: [
-            	{ spawn: [5,6],
+            	{ pspawn: [5,6],
+                  espawns: [[2,1]],
             	  shape: `
 xxxxxxxxxxx
 x    x    x
@@ -26,7 +27,8 @@ xxxxxxxxxxx
 `
 },
 {
-	spawn: [4,5],
+	pspawn: [4,5],
+    espawns: [],
 	shape: ``
 }
 ]

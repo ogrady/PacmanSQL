@@ -5,6 +5,7 @@ import HUD from "../entities/HUD";
 import { DB } from "../db/database";
 import * as env from "../db/environment";
 import * as fe from "../frontend";
+import * as t from "../types";
 
 enum Direction {
   None, // me.input.bindKey doesn't seem to like to be bound to the first enum value (= 0?), so here is a noop.
@@ -21,12 +22,15 @@ class PlayScreen extends me.Stage {
     private pacman: fe.Pacman | undefined;
     private entities: {[key: number]: any};
     private pellets: {[key: string]: any};
+    private blockSize: t.Dimensions;
+    private map: any;
     //private pathfinding: pf.Pathfinding | undefined;
 
     public constructor() {
         super();
         this.entities = {};
         this.pellets = {};
+        this.blockSize = [0,0];
     }
 
     private hashCoordinate(x: number, y: number): string {
@@ -39,6 +43,58 @@ class PlayScreen extends me.Stage {
         
     }
 
+    private doKeyBinds(): void {
+        me.input.bindKey(me.input.KEY.W, Direction.Up);
+        me.input.bindKey(me.input.KEY.S, Direction.Down);
+        me.input.bindKey(me.input.KEY.A, Direction.Left);
+        me.input.bindKey(me.input.KEY.D, Direction.Right);        
+    }
+
+    private spawnPellets(w: number, h: number, e: env.Environment): void {
+        for(const [x,y] of e.getWalkableAreas()) {
+            const pellet = new fe.Pellet([x * w + 0.5 * w, y * h + 0.5 * h]);
+            this.pellets[this.hashCoordinate(x,y)] = pellet;
+            me.game.world.addChild(pellet);
+        }
+    }
+
+    private prepareMap(e: env.Environment, map: any): void {
+        e.setMap(map.shape);
+        me.game.world.addChild(new me.ColorLayer("background", fe.BACKGROUND_COLOUR));
+
+        const [resWidth, resHeight] = game.data.resolution;
+        const [gridWidth, gridHeight] = e.getDimensions();
+        const w: number = resWidth / (gridWidth + 1);
+        const h: number = resHeight / (gridHeight + 1);
+        const [spawnX, spawnY] = map.pspawn;
+               
+        for(const [x,y] of e.getBlockedAreas()) {
+            const [ax, ay] = [x * 0.5 * w + 0.25 * w, y * 0.5 * h + 0.25 * h];
+            me.game.world.addChild(new fe.Wall([
+                [ax, ay],         // top left 
+                [ax + w, ay],     // top right
+                [ax + w, ay + h], // bottom right
+                [ax, ay + h]      // bottom left
+            ]));    
+        }
+        this.blockSize = [w,h];
+        this.map = map;
+    }
+
+    private spawnPlayer(e: env.Environment): void {
+        const [spawnX, spawnY] = this.map.pspawn;
+        const [w, h] = this.blockSize;
+
+        const playerId: number = e.createPlayer(spawnX, spawnY);       
+        this.pacman = new fe.Pacman(
+            playerId,
+            [spawnX * w + 0.5 * w,
+             spawnY * h + 0.5 * h], w);
+
+        this.entities[playerId] = this.pacman;
+        me.game.world.addChild(this.pacman);
+    }
+
 
     public async onResetEvent() {
 
@@ -49,49 +105,14 @@ class PlayScreen extends me.Stage {
         this.environment = new env.Environment(db);
 
         const e: env.Environment = this.environment;
-        
-        const map = game.data.maps[0];
-        const [spawnX, spawnY] = map.spawn;
-        e.setMap(map.shape);       
+        this.prepareMap(e, game.data.maps[0]);
 
 
-        me.input.bindKey(me.input.KEY.W, Direction.Up);
-        me.input.bindKey(me.input.KEY.S, Direction.Down);
-        me.input.bindKey(me.input.KEY.A, Direction.Left);
-        me.input.bindKey(me.input.KEY.D, Direction.Right);
-        
-        me.game.world.addChild(new me.ColorLayer("background", fe.BACKGROUND_COLOUR));
-        
-        const [resWidth, resHeigth] = game.data.resolution;
-        const [gridWidth, gridHeight] = e.getDimensions();
-        const w: number = resWidth / (gridWidth + 1);
-        const h: number = resHeigth / (gridHeight + 1);
-        game.data.blockSize = [w,h];
-        for(const [x,y] of e.getBlockedAreas()) {
-            const [ax, ay] = [x * 0.5 * w + 0.25 * w, y * 0.5 * h + 0.25 * h];
-            me.game.world.addChild(new fe.Wall([
-                [ax, ay],         // top left 
-                [ax + w, ay],     // top right
-                [ax + w, ay + h], // bottom right
-                [ax, ay + h]      // bottom left
-            ]));    
-        }
+        const [w, h] = this.blockSize;
+        this.spawnPlayer(e);
+        this.spawnPellets(w, h, e);
 
-        const playerId: number = e.createPlayer(spawnX, spawnY);       
-        this.pacman = new fe.Pacman(
-            playerId,
-            [spawnX * w + 0.5 * w,
-             spawnY * h + 0.5 * h], w);
-
-        this.entities[playerId] = this.pacman;
-
-        for(const [x,y] of e.getWalkableAreas()) {
-            const pellet = new fe.Pellet([x * w + 0.5 * w, y * h + 0.5 * h]);
-            this.pellets[this.hashCoordinate(x,y)] = pellet;
-            me.game.world.addChild(pellet);
-        }
-        
-        me.game.world.addChild(this.pacman);
+        this.doKeyBinds();
     }
 
     public update() {
@@ -116,7 +137,7 @@ class PlayScreen extends me.Stage {
         }
 
         const clearedCells: [number, number, number][] = this.environment?.updatePositions();
-        const [blockWidth, blockHeight] = game.data.blockSize;
+        const [blockWidth, blockHeight] = this.blockSize;
         for(const [eid, x, y, dx, dy] of this.environment?.getStates()) {
             const entity = this.entities[eid];
             if(entity !== undefined) {
@@ -136,11 +157,6 @@ class PlayScreen extends me.Stage {
         }
 
         return res;
-    }
-
-    onDestroyEvent() {
-        // remove the HUD from the game world
-        me.game.world.removeChild(this.HUD);
     }
 }
 
