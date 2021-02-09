@@ -4,6 +4,8 @@ import HUD from "../entities/HUD";
 
 import { DB } from "../db/database";
 import * as env from "../db/environment";
+import * as pf from "../db/pathfinding";
+import * as dfa from "../db/dfa";
 import * as fe from "../frontend";
 import * as t from "../types";
 import * as fp from "../functools";
@@ -19,6 +21,8 @@ enum Direction {
 class PlayScreen extends me.Stage {
     private HUD: HUD | undefined;
     private environment: env.Environment | undefined;
+    private pathfinding: pf.Pathfinding | undefined;
+    private ghostDFA: dfa.DFA | undefined;
     private playerId: number = 0;
     private pacman: fe.DBRenderable | undefined;
     private entities: {[key: number]: any};
@@ -108,6 +112,13 @@ class PlayScreen extends me.Stage {
                  spawnY * h + 0.5 * h], w);
             this.entities[ghostId] = ghost;
             me.game.world.addChild(ghost);
+
+            //this.pathfinding?.initSearch(ghostId, [spawnX, spawnY], this.map.pspawn)
+            //this.pathfinding?.initGhostToPacmanSearch(ghostId);
+            this.ghostDFA?.setupEntity(ghostId, 1);
+            /*for(let i = 0; i < 10; i++) {
+                console.log(this.pathfinding?.tickPathsearch());
+            }*/
         }
     }
 
@@ -119,6 +130,8 @@ class PlayScreen extends me.Stage {
 
         const db = await DB.getInstance();
         this.environment = new env.Environment(db);
+        this.pathfinding = new pf.Pathfinding(db);
+        this.ghostDFA = new dfa.DFA(db, this.pathfinding);
 
         const e: env.Environment = this.environment;
         this.prepareMap(e, game.data.maps[0]);
@@ -137,6 +150,9 @@ class PlayScreen extends me.Stage {
         
         if(this.environment === undefined) return res; // early bail if async DB init has not finished yet
 
+        this.pathfinding?.tickPathsearch();
+        this.ghostDFA?.tick();
+        
         let x: number = 0;
         let y: number = 0;
         if (me.input.isKeyPressed(Direction.Left))  {

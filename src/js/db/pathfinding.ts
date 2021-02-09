@@ -70,6 +70,7 @@ export class Pathfinding extends db.DBUnit {
 
     public initSearch(entity_id: number, start: [number, number], destination: [number, number]): void {
         console.log(`initialising path search for entity ${entity_id}: (${start[0]},${start[1]}) → (${destination[0]}, ${destination[1]})`);
+        this.run(`DELETE FROM complete_paths WHERE entity_id = ${entity_id}`);
         this.initNodelist(entity_id, start, destination);
         this.run(`
             UPDATE 
@@ -84,6 +85,19 @@ export class Pathfinding extends db.DBUnit {
             `);
     }
 
+    public initGhostToPacmanSearch(ghost_id: number, pacman_id: number | null = null) {
+        const [gx, gy] = this.get(`SELECT x,y FROM position_components WHERE entity_id = ${ghost_id}`)[0];
+        const [px, py] = this.get(`
+            SELECT 
+                x,y 
+            FROM 
+                position_components 
+            WHERE 
+                entity_id = COALESCE(${pacman_id}, (SELECT rowid FROM type_components WHERE type = 1)) -- pacman
+            `)[0];
+        this.initSearch(ghost_id, [gx, gy], [px, py]);
+    }
+
     public expand(): void {
         this.run("DELETE FROM cheapest");
 
@@ -96,7 +110,7 @@ export class Pathfinding extends db.DBUnit {
                     nl.cell_id,
                     nl.position_x,
                     nl.position_y,
-                    nl.g, 
+                    nl.g,
                     ROW_NUMBER() OVER (PARTITION BY entity_id ORDER BY f ASC) AS f_rank
                 FROM 
                     node_list AS nl 
@@ -167,7 +181,7 @@ export class Pathfinding extends db.DBUnit {
     }
 
     public resolvePaths() {
-        this.exec("DELETE FROM complete_paths");
+        //this.exec("DELETE FROM complete_paths");
 
 
         // assuming that all path searches are valid, there will be no check for invalid paths

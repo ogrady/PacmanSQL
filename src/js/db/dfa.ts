@@ -1,9 +1,14 @@
 import { DB, DBUnit } from "./database";
 import * as fp from "../functools";
+import * as pf from "./pathfinding";
 
 export class DFA extends DBUnit {
-    public constructor(db: DB) {
+    private pathfinding: pf.Pathfinding; // FIXME: this needs to go into a subclass that is disconnected from creating the general DFA stuff
+
+    public constructor(db: DB, pathfinding: pf.Pathfinding) {
         super(db);
+
+        this.pathfinding = pathfinding;
 
         this.tables = ["state_buffer", "ticks", "effects", "effect_closures", "condition_closures", "dfa", "states", "edges"];
 
@@ -11,6 +16,16 @@ export class DFA extends DBUnit {
             CREATE TABLE state_buffer(
                 entity_id INT, 
                 new_state INT
+            )`);
+
+        this.run(`
+            CREATE TABLE entity_states(
+                entity_id INT, 
+                dfa_id INT,
+                state_id INT,
+                FOREIGN KEY(entity_id) REFERENCES entites(rowid),
+                FOREIGN KEY(dfa_id) REFERENCES dfa(rowid),
+                FOREIGN KEY(state_id) REFERENCES states(rowid)
             )`);
 
         this.run(`
@@ -46,7 +61,7 @@ export class DFA extends DBUnit {
                 entity_id             INT,
                 closure               JSON,
                 FOREIGN KEY(entity_id) REFERENCES entities(rowid),
-                FOREIGN KEY(condition_id) REFERENCES condition(rowid),
+                FOREIGN KEY(condition_id) REFERENCES condition(rowid)
             )`);
 
         this.run(`
@@ -70,49 +85,70 @@ export class DFA extends DBUnit {
                 effect_id     INT,
                 next_state    INT,
                 weight        INT,
-                FOREIGN KEY dfa_id REFERENCES dfa(rowid),
-                FOREIGN KEY current_state REFERENCES states(rowid),
-                FOREIGN KEY condition_id REFERENCES conditions(rowid),
-                FOREIGN KEY effect_id REFERENCES effects(rowid),
-                FOREIGN KEY next_state REFERENCES states(rowid),
+                FOREIGN KEY(dfa_id) REFERENCES dfa(rowid),
+                FOREIGN KEY(current_state) REFERENCES states(rowid),
+                FOREIGN KEY(condition_id) REFERENCES conditions(rowid),
+                FOREIGN KEY(effect_id) REFERENCES effects(rowid),
+                FOREIGN KEY(next_state) REFERENCES states(rowid),
                 UNIQUE(current_state, condition_id) -- no ndfa
             )`);
 
         this.createConditionUDFs();
         this.createEffectUDFs();
         this.createDispatchers();
+
+        this.createDFA(); 
     }
 
-    public tick(): void {
-        this.run(`TRUNCATE state_buffer`);
-        this.run(`
-            WITH new_states(entity_id, new_state, effect_result) AS (
+    public tick(): void { 
+        this.run(`DELETE FROM state_buffer`);
+        const transitions = this.get(`
+            WITH new_states(entity_id, new_state, effect_name) AS (
                 SELECT 
                     s.entity_id, 
                     e.next_state,
-                    dfa.dispatch_effect(ef.fname, s.actor_id, '{}'::JSON)
-                    ,ROW_NUMBER() OVER (PARTITION BY s.entity_id ORDER BY e.weight DESC)
+                    ef.fname
+                END
                 FROM 
-                    dfa.actor_states AS s 
-                    JOIN dfa.edges AS e
+                    entity_states AS s 
+                    JOIN edges AS e
                       ON (s.dfa_id, s.state_id) = (e.dfa_id, e.current_state)
-                    JOIN dfa.conditions AS c 
-                      ON e.condition_id = c.condition_id
-                    LEFT JOIN dfa.effects AS ef -- effects can be NULL!
-                      ON e.effect_id = ef.effect_id
+                    JOIN conditions AS c 
+                      ON e.condition_id = c.rowid
+                    LEFT JOIN effects AS ef -- effects can be NULL!
+                      ON e.effect_id = ef.rowid
                 WHERE 
-                    dfa.dispatch_condition(c.fname, s.entity_id, '{}'::JSON)  
+                    CASE c.fname
+                        WHEN 'cond_has_path'       THEN cond_has_path(s.entity_id)
+                        WHEN 'cond_true'           THEN cond_true(s.entity_id)
+                        WHEN 'cond_has_no_path'    THEN cond_has_no_path(s.entity_id)
+                        ELSE FALSE
+                    END
+                    --true
+                    -- dispatch_condition(c.fname, s.entity_id)  
             )
-            INSERT INTO state_buffer(entity, new_state) 
-            SELECT entity, new_state FROM new_states;
+            SELECT entity_id, new_state, effect_name FROM new_states
+            --INSERT INTO state_buffer(entity_id, new_state) 
+            --SELECT entity_id, new_state FROM new_states`);
 
-            UPDATE actor_states AS current SET 
-                state_id = ns.new_state
-            FROM 
-                pg_temp.state_buffer AS ns 
-            WHERE 
-                current.entity_id = ns.entity_id
-        `);
+        for(const [eid, sid, fname] of transitions) {
+            if(fname === "eff_move_next_cell") {
+                this.moveNextCell(eid);
+            }
+            else if(fname === "eff_pathsearch_direct") {
+                this.pathsearchDirect(eid);
+            }
+            this.run(`
+                    UPDATE entity_states AS current SET 
+                        state_id = ${sid}
+                    FROM 
+                        state_buffer AS ns 
+                    WHERE 
+                        current.entity_id = ${eid}
+                `);
+        }
+
+        
     }
 
     private createUDFs(funs: {[id: string]: (...params: any) => any}) {
@@ -121,63 +157,106 @@ export class DFA extends DBUnit {
         }
     }
 
-    // unfinished
     private createDispatchers(): void {
         const funs: {[id: string]: (...params: any) => void} = {
-            "dispatch_effect": (fname: string, eid: number, closure: any) => this.db.inner.run(`
-                SELECT CASE ${fname}
-                    WHEN 'eff_move_towards_target' THEN eff_move_towards_target(${eid})
-                    WHEN 'eff_target_closest'      THEN eff_target_closest(_actor_id)
-                    WHEN 'eff_attack_target'       THEN eff_attack_target(_actor_id)
+            "dispatch_effect": (fname: string, eid: number) => this.db.inner.getSingleValue(` -- need to return something to satisfy SELECT CASE
+                SELECT CASE '${fname}'
+                    WHEN 'eff_move_next_cell'      THEN eff_move_next_cell(${eid})
+                    WHEN 'eff_pathsearch_direct'   THEN eff_pathsearch_direct(${eid})
                 END`),
-            "dispatch_condition": (fname: string, eid: number, closure: any) => this.db.inner.run(`
-                SELECT CASE ${fname}
-                    WHEN 'cond_is_at'      THEN cond_is_at(${eid},??,??)
-                    WHEN 'dfa.cond_target_in_range' THEN dfa.cond_target_in_range(_actor_id)
-                    WHEN 'dfa.cond_has_target' THEN dfa.cond_has_target(_actor_id)
-                    WHEN 'dfa.cond_true'       THEN dfa.cond_true()
-                    WHEN 'not'                 THEN NOT(dispatch_condition((_closure->>'fname'), _actor_id, (_closure->>'closure')::JSON))
-                    WHEN 'and'                 THEN dispatch_condition((_closure->>'fname1'), _actor_id, (_closure->>'closure1')::JSON) AND
-                                                    dispatch_condition((_closure->>'fname2'), _actor_id, (_closure->>'closure2')::JSON)
-                    WHEN 'or'                  THEN dispatch_condition((_closure->>'fname1'), _actor_id, (_closure->>'closure1')::JSON) OR
-                                                    dispatch_condition((_closure->>'fname2'), _actor_id, (_closure->>'closure2')::JSON)`)
+            "dispatch_condition": (fname: string, eid: number) => {
+                const res = this.db.inner.getSingleValue(`
+                SELECT CASE '${fname}'
+                    WHEN 'cond_has_path'       THEN FALSE -- cond_has_path(${eid})
+                    WHEN 'cond_true'           THEN FALSE -- cond_true(${eid})
+                    WHEN 'cond_has_no_path'    THEN FALSE -- cond_has_no_path(${eid})
+                    ELSE FALSE
+                END`);
+                return res;
+            }
         };
         this.createUDFs(funs);
     }
 
     private createConditionUDFs() {
         const funs: {[id: string]: (...params: any) => boolean} = { 
-            "cond_true": () => this.db.getSingleValue("SELECT TRUE"),
-            "cond_is_at": (eid: number, x: number, y: number) => this.db.getSingleValue(`
-                            SELECT 
-                                (${x},${y}) = a.position 
-                            FROM 
-                                position_components AS pc 
-                            WHERE 
-                                pc.entity_id = ${eid})`)
+            "cond_true": (eid: number) => this.db.getSingleValue("SELECT TRUE"),
+            "cond_has_path": (eid: number) => this.db.getSingleValue(`
+                            SELECT COUNT(*) > 0 FROM complete_paths WHERE entity_id = ${eid}`),
+            "cond_has_no_path": (eid: number) => this.db.getSingleValue(`
+                            SELECT COUNT(*) = 0 FROM complete_paths WHERE entity_id = ${eid}`),
+         };
+        this.createUDFs(funs);
+    }
+
+    private moveNextCell(eid) {
+        console.log("move");
+         this.run(`
+            UPDATE position_components 
+            SET 
+                x = new.position_x, 
+                y = new.position_y
+            FROM 
+                (SELECT position_x, position_y FROM complete_paths WHERE entity_id = ${eid} ORDER BY steps ASC LIMIT 1) AS new
+            WHERE
+                entity_id = ${eid}
+            `);
+        this.run(`
+            DELETE FROM 
+                complete_paths
+            WHERE 
+                rowid = (SELECT rowid FROM complete_paths WHERE entity_id = ${eid} ORDER BY steps ASC LIMIT 1)`);
+    }
+
+    private pathsearchDirect(eid) {
+        this.pathfinding.initGhostToPacmanSearch(eid);
+    }
+
+    private createEffectUDFs() {
+        return;
+        const funs: {[id: string]: (eid: number) => void} = { 
+            "eff_move_next_cell": this.moveNextCell,
+            "eff_pathsearch_direct": this.pathsearchDirect
         };
         this.createUDFs(funs);
     }
 
-    private createEffectUDFs() {
-        const funs: {[id: string]: (eid: number) => void} = { 
-            "eff_move_next_cell": (eid: number) => {
-                    this.db.inner.run(`
-                        UPDATE position_components 
-                        SET 
-                            x = new.x, 
-                            y = new.y
-                        FROM 
-                            (SELECT x,y FROM ??? WHERE entity_id = ${eid} ORDER BY step ASC LIMIT 1) AS new
-                        WHERE`);
-                    this.db.inner.run(`
-                        DELETE FROM 
-                            ??? 
-                        WHERE 
-                            rowid = (SELECT rowid FROM ??? WHERE entity_id = ${eid} ORDER BY step ASC LIMIT 1`)
-            },
-            "eff_pathsearch_simple": (eid: number) => this.db.inner.run(``)
-        };
-        this.createUDFs(funs);
+    private createDFA() {
+        this.run(`INSERT INTO conditions(fname) VALUES 
+            ('cond_has_path'),   -- 1
+            ('cond_has_no_path') -- 2
+            `);
+
+        this.run(`INSERT INTO effects(fname) VALUES 
+            ('eff_move_next_cell'),   -- 1
+            ('eff_pathsearch_direct') -- 2
+            `);
+
+        this.run(`INSERT INTO states(name) VALUES 
+            ('chasing'),  -- 1
+            ('searching') -- 2
+            `);
+
+        this.run(`INSERT INTO dfa(name, initial_state) VALUES 
+                ('stupid ghost', 1)
+            `);
+
+        this.run(`INSERT INTO edges(
+            dfa_id, current_state, condition_id, effect_id, next_state, weight) VALUES
+            (    1,             1,            1,         1,          1,     10),
+            (    1,             1,            2,         2,          2,     10),
+            (    1,             2,            1,      null,          1,     10)
+            `);        
+    }
+
+    public setupEntity(eid: number, dfaid: number) {
+        console.log("finish")
+        this.run(`
+            INSERT INTO entity_states(entity_id, dfa_id, state_id) VALUES(
+                ${eid},
+                ${dfaid},
+                (SELECT initial_state FROM dfa WHERE rowid = ${dfaid})
+            )`);
+
     }
 }
