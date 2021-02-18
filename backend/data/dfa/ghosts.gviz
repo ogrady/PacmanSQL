@@ -1,0 +1,10 @@
+strict digraph aggressive {
+    searching[init=true]
+    chasing
+    thinking
+    
+    searching -> chasing [label="path ready;"]
+    chasing -> thinking [label=";"]
+    chasing -> chasing [label="path ready;follow path"]
+    thinking -> searching [label=";pathsearch nearest"]
+} 

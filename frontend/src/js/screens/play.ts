@@ -2,7 +2,7 @@ import me from '../me';
 import game from "../game";
 import HUD from "../entities/HUD";
 
-import { DB } from "../db/database";
+import { SqliteDB as DB } from "../db/database";
 import * as env from "../db/environment";
 import * as pf from "../db/pathfinding";
 import * as dfa from "../db/dfa";
@@ -19,6 +19,7 @@ enum Direction {
 }
 
 class PlayScreen extends me.Stage {
+    private db: DB;
     private HUD: HUD | undefined;
     private environment: env.Environment | undefined;
     private pathfinding: pf.Pathfinding | undefined;
@@ -31,11 +32,12 @@ class PlayScreen extends me.Stage {
     private map: any;
     //private pathfinding: pf.Pathfinding | undefined;
 
-    public constructor() {
+    public constructor(db: DB) {
         super();
         this.entities = {};
         this.pellets = {};
         this.blockSize = [0,0];
+        this.db = db;
     }
 
     private hashCoordinate(x: number, y: number): string {
@@ -128,10 +130,9 @@ class PlayScreen extends me.Stage {
         //me.audio.play("bgm");
         console.log("Show play screen");
 
-        const db = await DB.getInstance();
-        this.environment = new env.Environment(db);
-        this.pathfinding = new pf.Pathfinding(db);
-        this.ghostDFA = new dfa.DFA(db, this.pathfinding);
+        this.environment = new env.Environment(this.db);
+        this.pathfinding = new pf.Pathfinding(this.db);
+        this.ghostDFA = new dfa.DFA(this.db, this.pathfinding);
 
         const e: env.Environment = this.environment;
         this.prepareMap(e, game.data.maps[0]);

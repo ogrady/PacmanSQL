@@ -1,4 +1,4 @@
-import { DB, DBUnit } from "./database";
+import { SqliteDB as DB, DBUnit } from "./database";
 import * as fp from "../functools";
 import * as pf from "./pathfinding";
 

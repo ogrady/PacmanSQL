@@ -1,24 +1,52 @@
 import initSqlJs, * as sqljs from "sql.js";
 
-export class DB {
-    private static instance: DB | undefined = undefined;
+// required, because constructor for sqlite needs async 
+// connection routine, which can not be used for constructors
+export class DBFactory {
+    public createSqliteDB() {
+        return SqliteDB.getInstance();
+    }
+}
+
+abstract class DB {
     public inner: any;
 
-    public static async getInstance(): Promise<DB> {
-        if(!DB.instance) {
+    public abstract getLastId(): number;
+
+    public abstract getSingleValue<T>(query: string): T;
+}
+
+export class PostgresDB extends DB {
+    public getLastId(): number {
+        return this.getSingleValue(`SELECT last_insert_rowid()`);
+    }
+
+    public getSingleValue<T>(query: string): T {
+        return this.inner.exec(query)[0].values[0][0] as T;
+    }
+}
+
+export class SqliteDB extends DB {
+    
+    private static instance: SqliteDB | undefined = undefined;
+
+    public static async getInstance(): Promise<SqliteDB> {
+        if(!SqliteDB.instance) {
             const SQL = await initSqlJs({
               // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
               // You can omit locateFile completely when running in node
               //locateFile: (file: string) => `https://sql.js.org/dist/${file}`
             });
-            DB.instance = new DB(new SQL.Database());
+            SqliteDB.instance = new SqliteDB(new SQL.Database());
         }
-        return DB.instance as DB;
+        return SqliteDB.instance as SqliteDB;
     }
 
     private constructor(db: any) {
+        super();
         this.inner = db;
     }
+    
 
     public printQueryResult(sql: string) {
         const res = this.inner.exec(sql);
