@@ -63,35 +63,23 @@ interface SpawnData {
 }
 
 async function main() {
-    const daba = new db.PacmanDB();
-    await daba.init();
-    await daba.environment.setMap(`
-xxxxxxxxxxx
-x    x    x
-x xx x xx x
-x  x x x  x
-xx       xx
-xx xx xx xx
-x         x
-x x xxx x x
-x         x
-xxxxxxxxxxx
-`);
+    const daba = await db.PacmanDB.create();
+    await reader.readMap(daba, "./data/map.txt");
     await daba.environment.createGhost(1,1);
     await daba.pathfinding.initSearch(1, [1,1], [4,4]);
     for(let i = 0; i < 10; i++) {
         const x = await daba.pathfinding.tickPathsearch();
         console.log(x);    
-    }
-    
+    }    
 }
 
-
-
 async function test() {    
-    const pacdb = new db.PacmanDB();
-    await pacdb.init();
-    reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
+    const pacdb = await db.PacmanDB.create();
+    await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
+    const res = await pacdb.environment.get("SELECT * FROM dfa.edges");
+    console.log("HERE GOES")
+    console.log(res);
+    console.log(await pacdb.environment.getSingleValue("SELECT * FROM dfa.edges"));
 }
 
 //main();

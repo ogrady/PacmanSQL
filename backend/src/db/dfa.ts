@@ -27,16 +27,16 @@ export class DFA extends db.DBUnit {
 
     public async createEffect(name: string): Promise<number> {
         console.log(`creating effect with name ${name}`);
-        return (await this.exec(`INSERT INTO dfa.effects(fname)
+        return this.exec(`INSERT INTO dfa.effects(fname)
                                 (VALUES (${db.str(name)})) 
-                                RETURNING id`));
+                                RETURNING id`);
     }
 
     public async createCondition(name: string): Promise<number> {
         console.log(`creating condition with name ${name}`);
-        return (await this.exec(`INSERT INTO dfa.conditions(fname)
+        return this.exec(`INSERT INTO dfa.conditions(fname)
                                 (VALUES (${db.str(name)})) 
-                                RETURNING id`));
+                                RETURNING id`);
     }
 
     public async createDFA(name: string, initState: string): Promise<number> {
@@ -52,7 +52,7 @@ export class DFA extends db.DBUnit {
         // conditions
         const conditions: string[] = (await this.exec("SELECT fname FROM dfa.conditions")).rows
                                         .map(row => `WHEN '${row.fname}' THEN dfa.${row.fname}(_eid)`);
-        this.exec(`
+        await this.exec(`
             CREATE OR REPLACE FUNCTION dfa.dispatch_condition(_eid INT, _fname TEXT)
             RETURNS BOOLEAN AS $$
                 SELECT CASE _fname
@@ -64,7 +64,7 @@ export class DFA extends db.DBUnit {
         // effects
         const effects: string[] = (await this.exec("SELECT fname FROM dfa.effects")).rows
                                         .map(row => `WHEN '${row.fname}' THEN dfa.${row.fname}(_eid)`);
-        this.exec(`
+        await this.exec(`
             CREATE OR REPLACE FUNCTION dfa.dispatch_effect(_eid INT, _fname TEXT)
             RETURNS VOID AS $$
                 SELECT CASE _fname

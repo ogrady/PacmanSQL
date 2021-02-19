@@ -9,7 +9,7 @@ export class Environment extends db.DBUnit {
         super(db, "./src/db/sql/environment.sql");
     }
 
-    private createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0, speed: number = 0.04, controller: string = "ai"): Promise<number> {
+    private async createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0, speed: number = 0.04, controller: string = "ai"): Promise<number> {
         console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}),speed ${speed} and controller ${controller}`);
         return this.func("environment.create_entity", [type, x, y, ẟx, ẟy, speed, db.str(controller)]);
     }
@@ -31,7 +31,7 @@ export class Environment extends db.DBUnit {
         return this.exec(`SELECT * FROM environment.connected_components`);
     }
 
-    public setMap(descriptor: string) {
+    public async setMap(descriptor: string) {
         // yes, this may have been easier to read with two for-loops, but I am polishing my FP a bit.
         const lines = descriptor.split("\n").filter(row => row.trim().length > 0); // // remove rows that are completely empty
         const blocked: [number, number][] = lines
@@ -42,21 +42,25 @@ export class Environment extends db.DBUnit {
 
         const width = Math.max(...lines.map(line => line.length));
         const height = lines.length;
-        this.createMap(width, height);
+        console.log(width, height);
+        if(width < 1 || height < 1) {
+            throw new Error("either width or height of passed map is 0.");
+        }
+        await this.createMap(width, height);
         for(const [x,y] of blocked) {
             this.run(`UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
         }
     }
 
-    public getBlockedAreas(): t.Coordinate[]  {
+    public async getBlockedAreas(): Promise<t.Coordinate[]>  {
         return this.get(`SELECT x,y FROM environment.cells WHERE NOT passable`);
     }
 
-    public getWalkableAreas(): t.Coordinate[] {
+    public async getWalkableAreas(): Promise<t.Coordinate[]> {
          return this.get(`SELECT x,y FROM environment.cells WHERE passable`);
     }
 
-    public getDimensions(): t.Dimensions {
+    public async getDimensions(): Promise<t.Dimensions> {
         return this.exec(`SELECT MAX(x) AS width, MAX(y) AS height FROM environment.cells`)[0].values[0];
     }
 
@@ -68,7 +72,7 @@ export class Environment extends db.DBUnit {
         return this.func("environment.update_positions", []);
     }
 
-    public getStates(): EntityState[] {
+    public async getStates(): Promise<EntityState[]> {
         return this.get(`SELECT entity_id, x, y, ẟx, ẟy FROM environment.entity_components`);
     }
 

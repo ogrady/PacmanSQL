@@ -51,10 +51,12 @@ export class PostgresqlConnection extends DBConnection {
 export class DBUnit { // in an attempt to not call it DBComponent to not confuse it with the component-pattern
     protected db: DBConnection;
     protected sqlfile: string;
+    protected tables: string[];
     
     public constructor(db: DBConnection, sqlfile: string) {
         this.db = db;
         this.sqlfile = sqlfile;
+        this.tables = [];
     }
 
     public async init() {
@@ -62,29 +64,40 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         const stmts: string[] = data.split(";--");
         for(let i = 0; i < stmts.length; i++) {
             await this.run(stmts[i]);
-        }        
+            this.tables.concat([...stmts[i].matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
+                            .map(m => m[1])); // table names
+        }
+        console.log(`intialised tables: [${this.tables.join(", ")}]`);
+    }
+
+    public async clearTables(): Promise<void> {
+        for(let i = 0; i < this.tables.length; i++) {
+            await this.run(`DELETE FROM ${this.tables[i]}`);
+        }
     }
 
     public exec(sql: string): Promise<any> {
-        return this.db.inner.query(sql);
+        return this.run(sql);
     }
 
-    public get(sql: string): any[] {
-        const res = this.exec(sql);
-        return res === undefined || res[0] === undefined 
+    public async get(sql: string): Promise<any[]> {
+        const res = await this.run(sql);
+        return res.rowCount === 0
                 ? []
-                : res[0].values ?? []
+                : res.rows;
+    }
+
+    public async getSingleValue(sql: string): Promise<any> {
+        const res = await this.get(sql);
+        return res.length === 0 ? undefined : res[0][Object.keys(res[0])[0]];
     }
 
     public run(sql: string): Promise<any> {
-        return this.exec(sql);
-        /*
         if(DEBUG) {
             console.log(sql);
             console.log("-------------")
         }
         return this.db.inner.query(sql);
-        */
     }
 
     public func(fname: string, args: any[] = []) {
@@ -101,17 +114,23 @@ export class PacmanDB {
     readonly dfa: DFA;
     readonly pathfinding: pf.Pathfinding;
 
-    public constructor() {
+    private constructor() {
         const connection = new PostgresqlConnection();
         this.environment = new env.Environment(connection);       
         this.pathfinding = new pf.Pathfinding(connection);
         this.dfa = new DFA(connection, this.pathfinding);
     }
 
-    public async init() {
+    private async init() {
         await this.environment.init();
         await this.pathfinding.init();
         await this.dfa.init();
+    }
+
+    public static async create(): Promise<PacmanDB> {
+        const instance: PacmanDB = new PacmanDB();
+        await instance.init();
+        return instance;
     }
 }
 

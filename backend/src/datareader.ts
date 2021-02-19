@@ -3,7 +3,7 @@ import * as fs from "fs";
 const dotparse = require("dotparser");
 
 
-async function parseGraph(pacdb, graph) {
+async function parseGraph(pacdb, graph): Promise<void> {
     // http://magjac.com/graphviz-visual-editor/
     const dfaName: string = graph.id;
     let initState: string | null = null;
@@ -52,18 +52,22 @@ async function parseGraph(pacdb, graph) {
         throw `no init state for DFA ${dfaName}. Create exactly one node with attribute init=true`;
     }
 
-    states.map(async name => await pacdb.dfa.createState(name));
+    await Promise.all(states.map(async name => await pacdb.dfa.createState(name)));
 
-    Array.from(effects).filter(x => x).map(async name => await pacdb.dfa.createEffect(name));
-    Array.from(conditions).filter(x => x).map(async name => await pacdb.dfa.createCondition(name));
+    await Promise.all(Array.from(effects).filter(x => x).map(async name => await pacdb.dfa.createEffect(name)));
+    await Promise.all(Array.from(conditions).filter(x => x).map(async name => await pacdb.dfa.createCondition(name)));
 
-    const dfaId = await pacdb.dfa.createDFA(dfaName, initState);
+    await pacdb.dfa.createDFA(dfaName, initState);
 
-    edges.map(async ([dfaName, from, to, effect, condition]) => await pacdb.dfa.createEdge(dfaName, from, to, effect, condition));
+    await Promise.all(edges.map(async ([dfaName, from, to, effect, condition]) => await pacdb.dfa.createEdge(dfaName, from, to, effect, condition)));
 
-    pacdb.dfa.createDispatchers();
+    await pacdb.dfa.createDispatchers();
 }
 
-export function readDFAs(pacdb, file) {
-    const gviz = dotparse(fs.readFileSync(file, "utf8")).map(g => parseGraph(pacdb, g));
+export async function readDFAs(pacdb, file): Promise<void> {
+    await Promise.all(dotparse(fs.readFileSync(file, "utf8")).map(g => parseGraph(pacdb, g)));
+}
+
+export async function readMap(pacdb, file): Promise<void> {
+    await pacdb.environment.setMap(fs.readFileSync(file, "utf8"));
 }

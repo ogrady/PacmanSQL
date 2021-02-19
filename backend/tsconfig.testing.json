@@ -2,7 +2,7 @@
     "compilerOptions": {
       "module": "commonjs",
       "target": "es2015",
-      "lib": ["es2017", "dom"],
+      "lib": ["es2017", "dom", "es2020.string"],
       "declaration": false,
       "noImplicitAny": false,
       "removeComments": true,

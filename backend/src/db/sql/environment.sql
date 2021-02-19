@@ -191,11 +191,12 @@ CREATE VIEW environment.cell_neighbourhoods(this_id, this_x, this_y, neighbour_i
 --);--
 
 
-CREATE TABLE pg_temp.cleared_cells(
+-- this is basically a temporary table, but creating it in pg_temp keeps failing for some reason
+CREATE TABLE environment.cleared_cells(
     cell_id INT,
     x INT,
     y INT
-) ON COMMIT DELETE ROWS;--
+);--
 
 ---------------------------------------------------------------
 -- FUNCTIONS
@@ -226,7 +227,7 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
         pc.entity_id = upd.entity_id
     ;
 
-    INSERT INTO pg_temp.cleared_cells(cell_id, x ,y)
+    INSERT INTO environment.cleared_cells(cell_id, x ,y)
     WITH obp(entity_id, x, y) AS (
         SELECT 
             entity_id,
@@ -252,12 +253,12 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
     UPDATE environment.cells SET 
         content = NULL 
     WHERE 
-        id IN (SELECT cell_id FROM pg_temp.cleared_cells)
+        id IN (SELECT cell_id FROM environment.cleared_cells)
     ;
 
 
     UPDATE environment.game_state SET 
-        score = score + (SELECT COUNT(cell_id) FROM pg_temp.cleared_cells)
+        score = score + (SELECT COUNT(cell_id) FROM environment.cleared_cells)
     ;
 
     SELECT 
@@ -265,7 +266,7 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
         x, 
         y 
     FROM 
-        pg_temp.cleared_cells
+        environment.cleared_cells
     ;
 $$ LANGUAGE sql;--
 
@@ -294,6 +295,8 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_map(_w INT, _h INT)
 RETURNS VOID AS $$
+    DELETE FROM environment.cells;
+
     WITH RECURSIVE 
     xs(x) AS (
         SELECT 0
