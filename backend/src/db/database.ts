@@ -1,13 +1,11 @@
 import * as pg from "pg";
 import * as fs from "fs";
 
-const DEBUG: boolean = true;
+const DEBUG = true;
 
 abstract class DBConnection {
     public inner: any;
-
     public abstract getLastId(): number;
-
     public abstract getSingleValue<T>(query: string): T;
 }
 
@@ -23,7 +21,7 @@ export class PostgresqlConnection extends DBConnection {
         });
     }
     
-    public printQueryResult(sql: string) {
+    public printQueryResult(sql: string): void {
         const res = this.inner.exec(sql);
         if(res.length > 0) {
             this.printResult(res[0].columns, res[0].values);  
@@ -32,7 +30,7 @@ export class PostgresqlConnection extends DBConnection {
         }
     }
 
-    public printResult(columns: any, values: any[]) {
+    public printResult(columns: any, values: any[]): void {
         console.log(columns)
         for(const row of values) {
             console.log(row);
@@ -59,7 +57,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         this.tables = [];
     }
 
-    public async init() {
+    public async init(): Promise<void> {
         const data: string = fs.readFileSync(this.sqlfile, "utf8");
         const stmts: string[] = data.split(";--");
         for(let i = 0; i < stmts.length; i++) {
@@ -100,7 +98,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         return this.db.inner.query(sql);
     }
 
-    public func(fname: string, args: any[] = []) {
+    public func(fname: string, args: any[] = []): Promise<any> {
         return this.run(`SELECT ${fname}(${args.join(", ")})`);
     }
 }

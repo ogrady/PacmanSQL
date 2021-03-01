@@ -1,11 +1,10 @@
 import * as db from "./database";
-import * as fp from "../functools";
 import * as pf from "./pathfinding";
 
 export class DFA extends db.DBUnit {
     private pathfinding: pf.Pathfinding; // FIXME: this needs to go into a subclass that is disconnected from creating the general DFA stuff
 
-    public constructor(db: db.PostgresqlConnection, pathfinding) {
+    public constructor(db: db.PostgresqlConnection, pathfinding: pf.Pathfinding) {
         super(db, "./src/db/sql/dfa.sql");
 
         this.pathfinding = pathfinding;
@@ -48,7 +47,7 @@ export class DFA extends db.DBUnit {
                                   RETURNING id`)).rows[0].id;
     }
 
-    public async createDispatchers() {
+    public async createDispatchers(): Promise<void> {
         // conditions
         const conditions: string[] = (await this.exec("SELECT fname FROM dfa.conditions")).rows
                                         .map(row => `WHEN '${row.fname}' THEN dfa.${row.fname}(_eid)`);

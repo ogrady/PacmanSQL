@@ -1,9 +1,7 @@
-import * as mocha from "mocha";
 import * as assert from "assert";
 import { PacmanDB as DB } from "../src/db/database";
-import * as env from "../src/db/environment";
 
-const supressOutput: boolean = true;
+const supressOutput = true;
 
 describe("Environment", () => {
     let db: DB = undefined;
@@ -11,13 +9,13 @@ describe("Environment", () => {
     before(function () {
         if(supressOutput) {
             //silence the console
-            console.log = function () {};    
+            console.log = function () { return; };    
         }        
     });
 
     after(function () {
         //reset console
-        //delete console.log;
+        delete console.log;
     });
 
     before("init DB", async () => {
@@ -26,8 +24,8 @@ describe("Environment", () => {
 
 
     describe('#setMap()', () => {
-        const map1: string = "█████";
-        const map2: string = `█████
+        const map1 = "█████";
+        const map2 = `█████
 ███ ██████
 ██ ██`;
             

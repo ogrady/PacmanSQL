@@ -14,13 +14,14 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(require("path"));
 const db = __importStar(require("./db/database"));
+const reader = __importStar(require("./datareader"));
 // don"t use import-as-syntax, because default imports in TypeScript are a mess.
 const express = require("express");
 const app = express();
@@ -52,9 +53,22 @@ function initSocket(socket) {
     });
 }
 async function main() {
-    const daba = new db.PacmanDB();
-    await daba.init();
-    const res = daba.environment.run("SELECT NOW()");
-    console.log(res);
+    const daba = await db.PacmanDB.create();
+    await reader.readMap(daba, "./data/map.txt");
+    await daba.environment.createGhost(1, 1);
+    await daba.pathfinding.initSearch(1, [1, 1], [4, 4]);
+    for (let i = 0; i < 10; i++) {
+        const x = await daba.pathfinding.tickPathsearch();
+        console.log(x);
+    }
 }
-main();
+async function test() {
+    const pacdb = await db.PacmanDB.create();
+    await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz");
+    const res = await pacdb.environment.get("SELECT * FROM dfa.edges");
+    console.log("HERE GOES");
+    console.log(res);
+    console.log(await pacdb.environment.getSingleValue("SELECT * FROM dfa.edges"));
+}
+//main();
+test();

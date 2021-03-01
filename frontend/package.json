@@ -7,7 +7,8 @@
     "test": "env TS_NODE_PROJECT=\"tsconfig.testing.json\" mocha --require ts-node/register 'test/**/*.ts'",
     "start:dev": "nodemon",
     "dev": "cp node_modules/sql.js/dist/sql-wasm.wasm build/sql-wasm.wasm; webpack-dev-server --open",
-    "clean": "rm -r ./js; rm -r ./build; echo 1"
+    "clean": "rm -r ./js; rm -r ./build; echo 1",
+    "lint": "npx eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "author": "",
   "license": "ISC",

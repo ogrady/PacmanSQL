@@ -1,7 +1,7 @@
 import * as db from "./database";
 
 export class Pathfinding extends db.DBUnit {
-    public constructor(db: any) {
+    public constructor(db: db.PostgresqlConnection) {
         super(db, "./src/db/sql/pathfinding.sql");
     }
 

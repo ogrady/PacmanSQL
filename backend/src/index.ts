@@ -2,8 +2,12 @@
 import * as socketio from "socket.io";
 import * as path from "path";
 import * as db from "./db/database";
-import * as reader from "./datareader";
+import * as reader from "./util/datareader";
+import * as ws from "./server/webserver";
 
+const server = new ws.WebServer();
+
+/*
 // don"t use import-as-syntax, because default imports in TypeScript are a mess.
 const express = require("express");
 
@@ -11,12 +15,8 @@ const express = require("express");
 const app = express();
 app.set("port", process.env.PORT || 3000);
 
-var http = require("http").Server(app);
-
-// simple "/" endpoint sending a Hello World
-// response
-
-let io = require("socket.io")(http);
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
 
 app.get("/", (req: any, res: any) => {
   res.sendFile(path.resolve("./index.html"));
@@ -52,7 +52,6 @@ function initSocket(socket: socketio.Socket) {
   })    
 }
 
-
 interface SpawnData {
     readonly type: string;
     readonly x: number;
@@ -61,6 +60,7 @@ interface SpawnData {
     readonly ẟy: number;
     readonly speed: number;
 }
+*/
 
 async function main() {
     const daba = await db.PacmanDB.create();
@@ -76,10 +76,12 @@ async function main() {
 async function test() {    
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
+    /*
     const res = await pacdb.environment.get("SELECT * FROM dfa.edges");
     console.log("HERE GOES")
     console.log(res);
     console.log(await pacdb.environment.getSingleValue("SELECT * FROM dfa.edges"));
+    */
 }
 
 //main();

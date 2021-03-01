@@ -14,14 +14,15 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PacmanDB = exports.DBUnit = exports.PostgresqlConnection = void 0;
+exports.str = exports.PacmanDB = exports.DBUnit = exports.PostgresqlConnection = void 0;
 const pg = __importStar(require("pg"));
-const DEBUG = false;
+const fs = __importStar(require("fs"));
+const DEBUG = true;
 class DBConnection {
 }
 class PostgresqlConnection extends DBConnection {
@@ -62,39 +63,68 @@ class DBUnit {
     constructor(db, sqlfile) {
         this.db = db;
         this.sqlfile = sqlfile;
+        this.tables = [];
     }
     async init() {
-        const fs = require("fs");
         const data = fs.readFileSync(this.sqlfile, "utf8");
-        const stmts = data.split(";");
+        const stmts = data.split(";--");
         for (let i = 0; i < stmts.length; i++) {
             await this.run(stmts[i]);
+            this.tables.concat([...stmts[i].matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
+                .map(m => m[1])); // table names
+        }
+        console.log(`intialised tables: [${this.tables.join(", ")}]`);
+    }
+    async clearTables() {
+        for (let i = 0; i < this.tables.length; i++) {
+            await this.run(`DELETE FROM ${this.tables[i]}`);
         }
     }
     exec(sql) {
-        return this.db.inner.query(sql);
+        return this.run(sql);
     }
-    get(sql) {
-        const res = this.exec(sql);
-        return res === undefined || res[0] === undefined
+    async get(sql) {
+        const res = await this.run(sql);
+        return res.rowCount === 0
             ? []
-            : res[0].values ?? [];
+            : res.rows;
+    }
+    async getSingleValue(sql) {
+        const res = await this.get(sql);
+        return res.length === 0 ? undefined : res[0][Object.keys(res[0])[0]];
     }
     run(sql) {
-        if (DEBUG)
+        if (DEBUG) {
             console.log(sql);
+            console.log("-------------");
+        }
         return this.db.inner.query(sql);
+    }
+    func(fname, args = []) {
+        return this.run(`SELECT ${fname}(${args.join(", ")})`);
     }
 }
 exports.DBUnit = DBUnit;
 const env = __importStar(require("./environment"));
+const dfa_1 = require("./dfa");
+const pf = __importStar(require("./pathfinding"));
 class PacmanDB {
     constructor() {
         const connection = new PostgresqlConnection();
         this.environment = new env.Environment(connection);
+        this.pathfinding = new pf.Pathfinding(connection);
+        this.dfa = new dfa_1.DFA(connection, this.pathfinding);
     }
     async init() {
         await this.environment.init();
+        await this.pathfinding.init();
+        await this.dfa.init();
+    }
+    static async create() {
+        const instance = new PacmanDB();
+        await instance.init();
+        return instance;
     }
 }
 exports.PacmanDB = PacmanDB;
+exports.str = (x) => `'${x}'`;

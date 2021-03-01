@@ -1,5 +1,5 @@
 import * as db from "./database";
-import * as fp from "../functools";
+import * as fp from "../util/functools";
 import * as t from "../types";
 
 export type EntityState = [number, number, number, number, number];
@@ -9,16 +9,16 @@ export class Environment extends db.DBUnit {
         super(db, "./src/db/sql/environment.sql");
     }
 
-    private async createEntity(type: string, x: number, y: number, ẟx: number = 0, ẟy: number = 0, speed: number = 0.04, controller: string = "ai"): Promise<number> {
+    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai"): Promise<number> {
         console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}),speed ${speed} and controller ${controller}`);
         return this.func("environment.create_entity", [type, x, y, ẟx, ẟy, speed, db.str(controller)]);
     }
 
-    public createPlayer(x: number, y: number, controller: string, ẟx: number = 0, ẟy: number = 0): Promise<number> {
+    public createPlayer(x: number, y: number, controller: string, ẟx = 0, ẟy = 0): Promise<number> {
         return this.createEntity(db.str("pacman"), x, y, ẟx, ẟy, 0.04, controller);
     }
 
-    public createGhost(x: number, y: number, ẟx: number = 0, ẟy: number = 0): Promise<number> {
+    public createGhost(x: number, y: number, ẟx = 0, ẟy = 0): Promise<number> {
         return this.createEntity(db.str("ghost"), x, y, ẟx, ẟy);
     }
 
@@ -27,11 +27,11 @@ export class Environment extends db.DBUnit {
         return this.func("environment.create_map", [w, h]);
     }
 
-    public getConnectedComponents() {
+    public getConnectedComponents(): Promise<any> {
         return this.exec(`SELECT * FROM environment.connected_components`);
     }
 
-    public async setMap(descriptor: string) {
+    public async setMap(descriptor: string): Promise<void> {
         // yes, this may have been easier to read with two for-loops, but I am polishing my FP a bit.
         const lines = descriptor.split("\n").filter(row => row.trim().length > 0); // // remove rows that are completely empty
         const blocked: [number, number][] = lines

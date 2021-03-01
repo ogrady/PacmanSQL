@@ -2,18 +2,18 @@ class Game {
     public data: any;
     constructor() {
         this.data = {
-        	resources: [
-			    //{ name : "pacman", type : "image", src : "data/img/pacman.png" }
-			    { name : "bgm", type : "audio", src : "data/bgm/" },
+            resources: [
+                //{ name : "pacman", type : "image", src : "data/img/pacman.png" }
+                { name : "bgm", type : "audio", src : "data/bgm/" },
                 { name : "pellet", type : "audio", src : "data/sfx/" },
-			],
+            ],
             score : 0,
             resolution: [800,800],
             
             maps: [
-            	{ pspawn: [5,6],
+                { pspawn: [5,6],
                   espawns: [[2,1]],
-            	  shape: `
+                  shape: `
 xxxxxxxxxxx
 x    x    x
 x xx x xx x
@@ -27,9 +27,9 @@ xxxxxxxxxxx
 `
 },
 {
-	pspawn: [4,5],
+    pspawn: [4,5],
     espawns: [],
-	shape: ``
+    shape: ``
 }
 ]
         };
