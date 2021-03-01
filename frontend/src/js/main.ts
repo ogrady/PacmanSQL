@@ -2,30 +2,13 @@ declare var require: any;
 require("../css/main.css");
 
 import "regenerator-runtime/runtime"; // fix a babel problem with async functions
-//const initSqlJs = require("sql.js");
-import initSqlJs, * as sqljs from "sql.js";
 import game from './game';
 import me from "./me";
 
-
-import { Pool, Client } from "pg";
-
-import { SqliteDB as DB, DBFactory } from "./db/database";
 import PlayScreen from "./screens/play";
 
 class Bootstrap {
-    private db: DB | undefined;
-
     constructor() {
-
-        // pools will use environment variables
-        // for connection information
-        const pool = new Pool()      
-        pool.query('SELECT NOW()', (err, res) => {
-          console.log(err, res)
-          pool.end()
-        })
-
         // Initialize the video.
         if (!me.video.init(game.data.resolution[0], game.data.resolution[1], 
             { wrapper : "screen", scale : "flex-width", renderer: me.video.CANVAS })) 
@@ -58,17 +41,7 @@ class Bootstrap {
 
     async loaded() {
         //me.state.set(me.state.MENU, new TitleScreen());
-
-        const SQL = await initSqlJs({
-              // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-              // You can omit locateFile completely when running in node
-              //locateFile: (file: string) => `https://sql.js.org/dist/${file}`
-            });
-        this.db = await new DBFactory().createSqliteDB();
-        me.state.set(me.state.PLAY, new PlayScreen(this.db));
-        // add our player entity in the entity pool
-        //me.pool.register("mainPlayer", PlayerEntity);
-
+        me.state.set(me.state.PLAY, new PlayScreen());
         // Start the game.
         me.state.change(me.state.PLAY);
     }

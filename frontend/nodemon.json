@@ -2,5 +2,5 @@
   "watch": ["src"],
   "ext": ".ts,.js,.html,.sql",
   "ignore": [],
-  "exec": "npm run dev"
+  "exec": "npm run pack"
 }

@@ -1,20 +1,20 @@
 /* eslint-disable no-var, strict, prefer-arrow-callback */
-'use strict';
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+"use strict";
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 var babelLoader = {
-  loader: 'babel-loader',
+  loader: "babel-loader",
   options: {
     cacheDirectory: true,
     presets: [
-      '@babel/preset-env'
+      "@babel/preset-env"
     ]
   }
 };
 
 module.exports = {
-  entry: './src/js/main.ts',
+  entry: "./src/js/main.ts",
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bundle.js"
@@ -23,10 +23,10 @@ module.exports = {
    fs: "empty" // temporary fix for webpack bug  
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js']
+    extensions: [".ts", ".tsx", ".js"]
   },
   devServer: {
-    contentBase: './build'
+    contentBase: "./build"
   },
   module: {
     rules: [{
@@ -61,7 +61,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './src/index.html'
+      template: "./src/index.html"
     })
   ]
 };

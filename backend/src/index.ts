@@ -5,8 +5,6 @@ import * as db from "./db/database";
 import * as reader from "./util/datareader";
 import * as ws from "./server/webserver";
 
-const server = new ws.WebServer();
-
 /*
 // don"t use import-as-syntax, because default imports in TypeScript are a mess.
 const express = require("express");
@@ -63,14 +61,17 @@ interface SpawnData {
 */
 
 async function main() {
-    const daba = await db.PacmanDB.create();
-    await reader.readMap(daba, "./data/map.txt");
-    await daba.environment.createGhost(1,1);
-    await daba.pathfinding.initSearch(1, [1,1], [4,4]);
+    const pacdb = await db.PacmanDB.create();
+    await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
+    await reader.readMap(pacdb, "./data/map.txt");
+    await pacdb.environment.createGhost(1,1);
+    /*await pacdb.pathfinding.initSearch(1, [1,1], [4,4]);
     for(let i = 0; i < 10; i++) {
-        const x = await daba.pathfinding.tickPathsearch();
+        const x = await pacdb.pathfinding.tickPathsearch();
         console.log(x);    
-    }    
+    }*/
+
+    const server = new ws.WebServer(pacdb);
 }
 
 async function test() {    
@@ -84,6 +85,6 @@ async function test() {
     */
 }
 
-//main();
-test();
+main();
+//test();
 

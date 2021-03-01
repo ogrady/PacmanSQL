@@ -1,7 +1,7 @@
 import * as pg from "pg";
 import * as fs from "fs";
 
-const DEBUG = true;
+const DEBUG = false;
 
 abstract class DBConnection {
     public inner: any;
@@ -62,8 +62,9 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         const stmts: string[] = data.split(";--");
         for(let i = 0; i < stmts.length; i++) {
             await this.run(stmts[i]);
-            this.tables.concat([...stmts[i].matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
-                            .map(m => m[1])); // table names
+            this.tables = this.tables.concat([...stmts[i]
+                       .matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
+                       .map(m => m[1])); // table names
         }
         console.log(`intialised tables: [${this.tables.join(", ")}]`);
     }

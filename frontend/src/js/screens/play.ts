@@ -1,43 +1,44 @@
-import me from '../me';
+import me from "../me";
+import { PacScreen } from "../screen";
 import game from "../game";
 import HUD from "../entities/HUD";
 
-import { SqliteDB as DB } from "../db/database";
-import * as env from "../db/environment";
-import * as pf from "../db/pathfinding";
-import * as dfa from "../db/dfa";
 import * as fe from "../frontend";
 import * as t from "../types";
 import * as fp from "../functools";
 
 enum Direction {
-  None, // me.input.bindKey doesn't seem to like to be bound to the first enum value (= 0?), so here is a noop.
+  None, // me.input.bindKey doesn"t seem to like to be bound to the first enum value (= 0?), so here is a noop.
   Up,
   Down,
   Left,
   Right
 }
 
-class PlayScreen extends me.Stage {
-    private db: DB;
+/*
+  var socket = io();
+
+  var form = document.getElementById("form");
+  var input = document.getElementById("input");
+
+  socket.emit("move", {eid: 1, x: 1, y: 0});
+*/
+
+
+class PlayScreen extends PacScreen {
     private HUD: HUD | undefined;
-    private environment: env.Environment | undefined;
-    private pathfinding: pf.Pathfinding | undefined;
-    private ghostDFA: dfa.DFA | undefined;
     private playerId: number = 0;
     private pacman: fe.DBRenderable | undefined;
     private entities: {[key: number]: any};
     private pellets: {[key: string]: any};
     private blockSize: t.Dimensions;
     private map: any;
-    //private pathfinding: pf.Pathfinding | undefined;
 
-    public constructor(db: DB) {
+    public constructor() {
         super();
         this.entities = {};
         this.pellets = {};
         this.blockSize = [0,0];
-        this.db = db;
     }
 
     private hashCoordinate(x: number, y: number): string {
@@ -45,9 +46,7 @@ class PlayScreen extends me.Stage {
     }
 
     onload() {
-        //
         console.log("loading...")
-        
     }
 
     private doKeyBinds(): void {
@@ -57,15 +56,18 @@ class PlayScreen extends me.Stage {
         me.input.bindKey(me.input.KEY.D, Direction.Right);        
     }
 
-    private spawnPellets(w: number, h: number, e: env.Environment): void {
+    private spawnPellets(w: number, h: number): void {
+        /*
         for(const [x,y] of e.getWalkableAreas()) {
             const pellet = new fe.Pellet([x * w + 0.5 * w, y * h + 0.5 * h]);
             this.pellets[this.hashCoordinate(x,y)] = pellet;
             me.game.world.addChild(pellet);
         }
+        */
     }
 
-    private prepareMap(e: env.Environment, map: any): void {
+    private prepareMap(map: any): void {
+        /*
         e.setMap(map.shape);
         me.game.world.addChild(new me.ColorLayer("background", fe.BACKGROUND_COLOUR));
 
@@ -86,9 +88,11 @@ class PlayScreen extends me.Stage {
         }
         this.blockSize = [w,h];
         this.map = map;
+        */
     }
 
-    private spawnPlayer(e: env.Environment): void {
+    private spawnPlayer(): void {
+        /*
         const [spawnX, spawnY] = this.map.pspawn;
         const [w, h] = this.blockSize;
 
@@ -100,9 +104,11 @@ class PlayScreen extends me.Stage {
 
         this.entities[playerId] = this.pacman;
         me.game.world.addChild(this.pacman);
+        */
     }
 
-    private spawnGhosts(e: env.Environment, count: number): void {
+    private spawnGhosts(count: number): void {
+        /*
         const [w, h] = this.blockSize;
         for(let i = 0; i < count; i++) {
             const [spawnX, spawnY] = fp.choice(this.map.espawns);
@@ -118,10 +124,11 @@ class PlayScreen extends me.Stage {
             //this.pathfinding?.initSearch(ghostId, [spawnX, spawnY], this.map.pspawn)
             //this.pathfinding?.initGhostToPacmanSearch(ghostId);
             this.ghostDFA?.setupEntity(ghostId, 1);
-            /*for(let i = 0; i < 10; i++) {
+            for(let i = 0; i < 10; i++) {
                 console.log(this.pathfinding?.tickPathsearch());
-            }*/
+            }
         }
+        */
     }
 
 
@@ -130,19 +137,8 @@ class PlayScreen extends me.Stage {
         //me.audio.play("bgm");
         console.log("Show play screen");
 
-        this.environment = new env.Environment(this.db);
-        this.pathfinding = new pf.Pathfinding(this.db);
-        this.ghostDFA = new dfa.DFA(this.db, this.pathfinding);
-
-        const e: env.Environment = this.environment;
-        this.prepareMap(e, game.data.maps[0]);
-
-
-        const [w, h] = this.blockSize;
-        this.spawnPlayer(e);
-        this.spawnPellets(w, h, e);
-        this.spawnGhosts(e, 1);
-
+        this.socket.on("map", data => console.log(data));
+        await this.socket.emit("map");
         this.doKeyBinds();
     }
 

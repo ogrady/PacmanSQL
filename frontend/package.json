@@ -6,46 +6,33 @@
   "scripts": {
     "test": "env TS_NODE_PROJECT=\"tsconfig.testing.json\" mocha --require ts-node/register 'test/**/*.ts'",
     "start:dev": "nodemon",
-    "dev": "cp node_modules/sql.js/dist/sql-wasm.wasm build/sql-wasm.wasm; webpack-dev-server --open",
+    "dev": "webpack-dev-server",
+    "pack": "webpack && cp -r data dist/",
     "clean": "rm -r ./js; rm -r ./build; echo 1",
     "lint": "npx eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^14.11.8",
     "@babel/core": "^7.5.5",
     "@babel/preset-env": "^7.5.5",
     "babel-loader": "^8.0.6",
     "css-loader": "^3.2.0",
     "file-loader": "^4.2.0",
     "html-webpack-plugin": "^3.2.0",
+    "nodemon": "^2.0.5",
     "style-loader": "^1.0.0",
     "ts-loader": "^6.0.4",
-    "webpack": "^4.39.3",
-    "webpack-cli": "^3.3.7",
-    "webpack-dev-server": "^3.8.0",
-    "nodemon": "^2.0.5",
     "ts-node": "^9.0.0",
-    "typescript": "^4.0.3"
+    "typescript": "^4.0.3",
+    "webpack": "^4.39.3",
+    "webpack-cli": "^4.5.0",
+    "webpack-dev-server": "^3.8.0"
   },
   "dependencies": {
     "@types/mocha": "^8.0.3",
-    "@types/sql.js": "^1.0.3",
-    "browser-sync": "^2.26.14",
-    "browserify": "^17.0.0",
-    "coffeescript": "^2.5.1",
-    "dgram": "^1.0.1",
-    "dns": "^0.2.2",
-    "grunt-browserify": "^5.3.0",
-    "http-server": "^0.12.3",
     "melonjs": "^8.0.1",
     "mocha": "^8.1.3",
-    "net": "^1.0.2",
-    "pg": "^8.5.1",
-    "pg-native": "^3.0.0",
-    "sql.js": "^1.3.2",
-    "tls": "0.0.1",
-    "tsify": "^5.0.2"
+    "socket.io-client": "^3.1.2"
   }
 }

@@ -16,8 +16,8 @@ export class DFA extends db.DBUnit {
         await this.func("dfa.create_dfa");
     }
 
-    public tick(): void { 
-        
+    public async tick(): Promise<void> { 
+        return this.exec("SELECT dfa.tick()");
     }
 
     private pathsearchDirect(eid) {

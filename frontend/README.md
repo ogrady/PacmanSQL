@@ -1,3 +1,5 @@
+REQUIRES WEBPACK GLOBALLY
+
 # PacmanSQL
 This is an ongoing effort to implement Pacman in SQL.
 
