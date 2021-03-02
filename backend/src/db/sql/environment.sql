@@ -157,38 +157,51 @@ CREATE VIEW environment.cell_neighbourhoods(this_id, this_x, this_y, neighbour_i
 -- does not work yet, because at the time of writing sqlite3 did not 
 -- support having aggregates or windows within recursive queries. 
 -- General idea has been successfully tested in postgresql.
---CREATE VIEW environment.compound_walls(cell_id, x, y, component_id) AS (
---    WITH RECURSIVE comps(cell_id, component_id) AS (
---        SELECT 
---            id AS cell_id,
---            id AS component_id
---        FROM 
---            environment.cells
---        WHERE 
---            NOT passable
---        UNION 
---        SELECT 
---            comps.cell_id,
---            MAX(neighbour_id)
---        FROM 
---            comps
---            JOIN environment.cell_neighbourhoods AS cn 
---              ON comps.cell_id = cn.this_id
---        GROUP BY 
---            comps.cell_id
---    ) 
---    SELECT 
---        comps.cell_id,
---        MAX(c.x), -- THE 
---        MAX(c.y), -- THE 
---        MAX(comps.component_id)
---    FROM 
---        comps 
---        JOIN environment.cells AS c 
---          ON comps.cell_id = cells.id
---    GROUP BY 
---        comps.cell_id
---);--
+CREATE VIEW environment.compound_walls(cell_id, x, y, component_id) AS (
+    WITH RECURSIVE comps(cell_id, component_id) AS (
+        SELECT 
+            id AS cell_id,
+            id AS component_id
+        FROM 
+            environment.cells
+        WHERE 
+            NOT passable
+        UNION 
+        (
+            WITH 
+                comps AS (TABLE comps) -- hack to work around restriction to not use aggregates in recursive term
+            SELECT
+                comps.cell_id,
+                MAX(n_comps.component_id)
+            FROM 
+                comps
+                JOIN environment.cell_neighbourhoods AS cn 
+                  ON comps.cell_id = cn.this_id
+                JOIN environment.cells AS c 
+                  ON cn.neighbour_id = c.id 
+                JOIN comps AS n_comps
+                  ON cn.neighbour_id = n_comps.cell_id
+            WHERE 
+                NOT c.passable
+            GROUP BY 
+                comps.cell_id
+        )
+    ) 
+    SELECT 
+        comps.cell_id,
+        --c.x,
+        --c.y,
+        --comps.component_id
+        MAX(c.x), -- THE 
+        MAX(c.y), -- THE 
+        MAX(comps.component_id)
+    FROM 
+        comps 
+        JOIN environment.cells AS c 
+          ON comps.cell_id = c.id
+    GROUP BY 
+        comps.cell_id
+);--
 
 
 -- this is basically a temporary table, but creating it in pg_temp keeps failing for some reason
