@@ -202,7 +202,7 @@ RETURNS TABLE(steps INT, entity_id INT, cell_id INT, position_x INT, position_y 
             (destination_x, destination_y) = (position_x, position_y)
             AND predecessor IS NOT NULL
     ),
-    paths(steps, entity_id, cell_id, position_x, position_y, predecessor) AS (
+    paths↺(steps, entity_id, cell_id, position_x, position_y, predecessor) AS (
         SELECT 
             0,
             entity_id,
@@ -222,12 +222,12 @@ RETURNS TABLE(steps INT, entity_id INT, cell_id INT, position_x INT, position_y 
             nl.predecessor
         FROM 
             pathfinding.node_list AS nl 
-            JOIN paths AS p 
+            JOIN paths↺ AS p 
               ON nl.cell_id = p.predecessor
                  AND nl.entity_id = p.entity_id
     )
     INSERT INTO pathfinding.complete_paths(steps, entity_id, cell_id, position_x, position_y, predecessor)
-        SELECT * FROM paths
+        SELECT * FROM paths↺
     ;
 
     DELETE FROM 

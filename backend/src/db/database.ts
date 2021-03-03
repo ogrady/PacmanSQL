@@ -1,7 +1,7 @@
 import * as pg from "pg";
 import * as fs from "fs";
 
-const DEBUG = false;
+const DEBUG = true;
 
 abstract class DBConnection {
     public inner: any;
