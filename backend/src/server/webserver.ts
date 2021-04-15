@@ -46,9 +46,11 @@ export class WebServer {
 
         socket.on("map", async () => {
             console.log("requested map");
-            const map = await this.pacdb.environment.getBlockedAreas();
-            console.log(map);
-            socket.emit("map", map);
+            const size = await this.pacdb.environment.getMapDimensions();
+            const blocked = await this.pacdb.environment.getBlockedAreas();
+            const shape = await this.pacdb.environment.getWallShapes();
+            console.log(shape);
+            socket.emit("map", {size: size, walls: shape});
         });  
     }
 }

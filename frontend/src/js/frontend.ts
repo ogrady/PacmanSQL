@@ -178,25 +178,31 @@ export class Wall extends me.Renderable {
     public constructor(points: t.Point[], 
                        colour: string = "#2a9adb", 
                        z: number = 100, 
-                       lineWidth: number = 2) 
+                       lineWidth: number = 4) 
     {
+        if(points.length < 3) {
+            throw new Error("Wall needs to consist of at least three points.");
+        }
         const xs: number[] = points.map(p => p[0]);
         const ys: number[] = points.map(p => p[1]);
         const x: number = Math.min(...xs);
         const y: number = Math.min(...ys);
         const w: number = Math.max(...xs) - x;
         const h: number = Math.max(...ys) - y;
-        super(x, y, w, h);
+        const [sx, sy] = [0,0];
+        super(sx, sy, w, h);
         this.z = z;
         this.colour = colour;
         this.lineWidth = lineWidth;
-        const vectors = points.map(xy => new me.Vector2d(xy[0], xy[1]))
-        this.polygon = new me.Polygon(x, y, vectors);
+        this.anchorPoint = new me.Vector2d(0,0);
+        const vectors = points.map(xy => new me.Vector2d(xy[0], xy[1]));
+        this.polygon = new me.Polygon(sx, sy, vectors);       
+        console.log(`Creating wall with points`, points);
     }
 
     public draw(renderer: any) {
         renderer.setColor(this.colour);
         renderer.setLineWidth(this.lineWidth);
-        renderer.stroke(this.polygon);
+        renderer.strokePolygon(this.polygon);
     }
 }

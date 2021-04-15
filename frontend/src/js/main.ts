@@ -11,7 +11,12 @@ class Bootstrap {
     constructor() {
         // Initialize the video.
         if (!me.video.init(game.data.resolution[0], game.data.resolution[1], 
-            { wrapper : "screen", scale : "flex-width", renderer: me.video.CANVAS })) 
+            {
+                parent : "screen",
+                renderer : me.video.AUTO,
+                scaleMethod : "fit",
+                doubleBuffering : true
+           })) 
         {
             alert("Your browser does not support HTML5 canvas.");
             return;
@@ -25,24 +30,15 @@ class Bootstrap {
             });
         }
 
-        // Initialize the audio.
         me.audio.init("mp3,ogg,wav");
-
-        // Set a callback to run when loading is complete.
         me.loader.onload = this.loaded.bind(this);
-
-        // Load the resources.
         me.loader.preload(game.data.resources, this.loaded.bind(this));
-        //me.loader.preload({});
-
-        // Initialize melonJS and display a loading screen.
         me.state.change(me.state.LOADING);
     }
 
     async loaded() {
         //me.state.set(me.state.MENU, new TitleScreen());
-        me.state.set(me.state.PLAY, new PlayScreen());
-        // Start the game.
+        me.state.set(me.state.PLAY, new PlayScreen([game.data.resolution[0], game.data.resolution[1]]));
         me.state.change(me.state.PLAY);
     }
 

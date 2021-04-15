@@ -31,13 +31,15 @@ class PlayScreen extends PacScreen {
     private pacman: fe.DBRenderable | undefined;
     private entities: {[key: number]: any};
     private pellets: {[key: string]: any};
+    private canvasSize: t.Dimensions;
     private blockSize: t.Dimensions;
     private map: any;
 
-    public constructor() {
+    public constructor(canvasSize: t.Dimensions) {
         super();
         this.entities = {};
         this.pellets = {};
+        this.canvasSize = canvasSize;
         this.blockSize = [0,0];
     }
 
@@ -137,7 +139,36 @@ class PlayScreen extends PacScreen {
         //me.audio.play("bgm");
         console.log("Show play screen");
 
-        this.socket.on("map", data => console.log(data));
+        this.socket.on("map", map => {
+            this.blockSize = [Math.round((this.canvasSize[0] + 3) / map.size.width), Math.round((this.canvasSize[1] + 3) / map.size.height)];
+            const [w, h] = this.blockSize;
+
+            // GRID
+            
+            for(let i = 0; i < this.canvasSize[0] / w; i++) {
+                for(let j = 0; j < this.canvasSize[1] / h; j++) {
+                    const [sx, sy] = [i * w, j * h];
+                    me.game.world.addChild(new fe.Wall([[sx,sy], [sx+w,sy], [sx+w,sy+h], [sx,sy+h], [sx,sy]  ], "#3d3d3d", 10,1));
+                }
+            }
+            
+            map.walls.map(wall => me.game.world.addChild(new fe.Wall(wall.coordinates.map(([x,y]) => [x * w, y * h]))));
+            // here, three points are colinear if they share the X or Y coordinate (we don't have arbitrary slopes)
+            const colinear = (ps: t.Point[]) => new Set(ps.map(p => p[0])).size === 1 || new Set(ps.map(p => p[1])).size === 1;
+
+            const simplifyShape = (ps: t.Point[]) => {
+                let b = 0;
+                while(b < ps.length) {
+                    const a = b - 1;
+                    const c = (b + 1) % ps.length;
+                    //while(colinear())
+                }
+                for(let i = 1; i < ps.length; i++) {
+                    const k = i - 1;
+                    const j = (i + 1) % ps.length;
+                }
+            }
+        });
         await this.socket.emit("map");
         this.doKeyBinds();
     }

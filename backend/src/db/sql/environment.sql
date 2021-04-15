@@ -7,7 +7,8 @@ BEGIN
         RAISE EXCEPTION 'THE used on an inconsistent list. Expected consistent %, but the list also contained %.', acc, x ;
     END IF;
     RETURN x;
-END $$ LANGUAGE PLPGSQL STRICT;-- STRICT ignores null values
+-- STRICT ignores null values
+END $$ LANGUAGE PLPGSQL;--
 
 
 CREATE OR REPLACE AGGREGATE the(anyelement)
@@ -176,12 +177,8 @@ CREATE VIEW environment.cell_neighbourhoods(this_id, this_x, this_y, neighbour_i
             environment.cells
 );--
 
--- fixme: make into view again
 -- finds connected pieces of walls.
---CREATE FUNCTION environment.compound_walls()
---RETURNS TABLE(cell_id INT, x INT, y INT, component_id INT) AS $$
--- make into materialized view and
--- keep in mind to call `REFRESH MATERIALIZED VIEW environment.compound_walls;` when generating more map
+-- FIXME: make into materialized view and keep in mind to call `REFRESH MATERIALIZED VIEW environment.compound_walls;` when generating more map
 CREATE VIEW environment.compound_walls(cell_id, x, y, component_id) AS (
     WITH RECURSIVE 
     comps↺(iteration, cell_id, component_id) AS (
@@ -448,137 +445,171 @@ UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,9);
 -- □■     ■□     ■□     ■□
 -- □□ →   □□ ↑   ■■ ↑   □■ ↑
 --    
+-- □■     ■□     □■     □■
+-- □■ ↓   ■□ ↑   ■■ ←   ■□ ←  
+--
 -- □□     □□     ■■     ■■
 -- □■ ↓   ■□ ←   □■ ↓   ■■ ✕  
 
--- FIXME: add one cell to each side
 -- FIXME: when two components are connected diagonally,
 -- they are rightfully separated into two components,
 -- but the MS algorithm will detect them as one component.
+CREATE VIEW environment.wall_shapes(wall, coordinates) AS (
 WITH RECURSIVE
 moves(hash, x_off, y_off) AS (
     VALUES
     ('□□□□',  1,  0), ('■■□□',  1,  0), ('□□■■', -1,  0), ('■■■□', 1,  0),
     ('□■□□',  1,  0), ('■□□□',  0, -1), ('■□■■',  0, -1), ('■□□■', 0, -1),
-    ('□□□■',  0,  1), ('□□■□', -1,  0), ('■■□■',  0,  1), ('■■■■', 0,  0)
+    ('□■□■',  0,  1), ('■□■□',  0, -1), ('□■■■',  -1, 0), ('□■■□', -1, 0),
+    ('□□□■',  0,  1), ('□□■□', -1,  0), ('■■□■',  0,  1) --, ('■■■■', 0,  0)
 ),
 -- complete grid with components marked down
-grid(cell_id, x, y, passable, component_id) AS (
+grid(x, y, passable, component_id) AS (
+    -- for components that reach all the way to the border of the map, we need to add another cell
+    -- in each direction, to make sure they can still form proper square.
+    -- That extra space needs to be "walkable" to produce the proper hashes of a cell that is "not occupied by a wall"
+    WITH fluffed(x, y) AS (
+        SELECT x,y FROM environment.cells 
+        UNION -- using UNION we do not get duplicate cells, but just the extra cells outside of the original map's borders
+        SELECT 
+            c.x + xs.x,
+            c.y + ys.y
+        FROM 
+            environment.cells AS c,
+            generate_series(-1,1) AS xs(x),
+            generate_series(-1,1) AS ys(y)
+    )
     SELECT 
-        c.id,
-        c.x,
-        c.y,
-        c.passable,
+        f.x,
+        f.y,
+        cw.component_id IS NULL,
         cw.component_id
     FROM 
-        environment.cells AS c 
-        LEFT JOIN environment.compound_walls AS cw 
-          ON c.id = cw.cell_id
+        fluffed AS f 
+        LEFT JOIN environment.compound_walls AS cw
+          ON (cw.x, cw.y) = (f.x, f.y)
 ),
--- one random coordinate per component
-start_coordinates(cell_id, x, y, passable, component_id) AS (
+-- one coordinate per component
+start_coordinates(x, y, component_id) AS (
     SELECT DISTINCT ON (component_id)
-        cell_id, x, y, passable, component_id
+        x, 
+        y, 
+        component_id -- -1|-1 so that the actual coordinate is the lower right corner of the resulting square, to match with the shapes in moves
     FROM
         grid
     WHERE 
         component_id IS NOT NULL
     ORDER BY 
-        component_id, y, x -- most bottom-right cell
+        component_id, y DESC, x DESC -- most bottom-right cell. This is required, as using a cell of the upper-left part would go around the OUTSIDE of the outermost shape. We need it to go around the INSIDE.
 ),
 -- offsets to make a coordinate into a square
 square_offsets(x, y) AS (
     SELECT 
-        *
+        xs.x, 
+        ys.y
     FROM 
-        generate_series(0,1) AS xs, 
-        generate_series(0,1) AS ys
+        generate_series(0,1) AS xs(x), 
+        generate_series(0,1) AS ys(y)
 ),
-marching_squares↺(iteration, cell_id, x, y, passable, component_id, start) AS (
+marching_squares↺(iteration, x, y, component_id, start) AS (
     SELECT 
         1,
-        cell_id, 
         x, 
         y, 
-        passable, 
         component_id, 
-        (x, y) , (1,1), ''
+        (x, y) , (0,0), ''
     FROM 
         start_coordinates
     UNION ALL 
     (
     WITH
-    squares(iteration, origin_id, origin_x, origin_y, cell_id, x, y, passable, component_id, start) AS (
-        WITH coordinates(iteration, origin_id, origin_x, origin_y, neighbour_x, neighbour_y, start) AS (
+    squares(iteration, origin_x, origin_y, x, y, passable, component_id, start) AS (
+        WITH coordinates(iteration, component_id, origin_x, origin_y, neighbour_x, neighbour_y, start) AS (
             SELECT
-                ms.iteration AS iteration,
-                ms.cell_id   AS origin_id,
-                ms.x         AS origin_x,
-                ms.y         AS origin_y,
-                ms.x - so.x  AS neighbour_x, -- using minus here is important to match the resulting squares with the hashes!
-                ms.y - so.y  AS neighbour_y,
-                ms.start     AS start
+                ms.iteration    AS iteration,
+                ms.component_id AS component_id,
+                ms.x            AS origin_x,
+                ms.y            AS origin_y,
+                ms.x - so.x     AS neighbour_x, -- using minus here is important to match the resulting squares with the hashes! (origin needs to be lower right coordinate of the square)
+                ms.y - so.y     AS neighbour_y,
+                ms.start        AS start
             FROM   
                 marching_squares↺ AS ms,
                 square_offsets    AS so
         )
         SELECT 
             c.iteration       AS iteration,
-            c.origin_id       AS origin_id,
             c.origin_x        AS origin_x,
             c.origin_y        AS origin_y,
-            grid.cell_id      AS cell_id, 
             grid.x            AS x,
             grid.y            AS y,
             grid.passable     AS passable,
-            grid.component_id AS component_id,
+            c.component_id    AS component_id,
             c.start           AS start
         FROM 
             coordinates AS c
             JOIN grid 
               ON (c.neighbour_x, c.neighbour_y) = (grid.x, grid.y)   
     ),
-    hashes(iteration, origin_id, hash, start) AS (
+    hashes(iteration, origin_x, origin_y, component_id, hash, start) AS (
         SELECT 
             iteration,
-            origin_id,
-            string_agg(CASE WHEN passable THEN '■' ELSE '□' END ,'' ORDER BY x,y),
+            origin_x,
+            origin_y,
+            THE(component_id),
+            string_agg(CASE WHEN passable THEN '□' ELSE '■' END ,'' ORDER BY y,x), -- yes, y,x is correct
             start
         FROM 
             squares
         GROUP BY 
-            origin_id, start, iteration
+            origin_x, origin_y, start, iteration
     )
     SELECT 
-        hashes.iteration + 1           AS iteration,
-        new_grid.cell_id               AS cell_id,
-        new_grid.x                     AS x,
-        new_grid.y                     AS y,
-        new_grid.passable              AS passable,
-        origin_grid.component_id       AS component_id,
-        (origin_grid.x, origin_grid.y) AS start,
+        hashes.iteration + 1        AS iteration,
+        grid.x                      AS x,
+        grid.y                      AS y,
+        hashes.component_id         AS component_id,
+        hashes.start                AS start,
         (moves.x_off, moves.y_off),
         hashes.hash
     FROM 
         hashes
-        JOIN grid AS origin_grid
-          ON hashes.origin_id = origin_grid.cell_id
         JOIN moves
           ON hashes.hash = moves.hash 
-        JOIN grid AS new_grid
-          ON (origin_grid.x + moves.x_off, origin_grid.y + moves.y_off) = (new_grid.x, new_grid.y)
+        JOIN grid
+          ON (hashes.origin_x + moves.x_off, hashes.origin_y + moves.y_off) = (grid.x, grid.y)
     WHERE 
-        iteration < 100
-        or (new_grid.x, new_grid.y) <> hashes.start
+        (grid.x, grid.y) <> hashes.start
     )
 
+),
+-- add another line back to the origin of each shapes to close them
+closed(component_id, iteration, x, y) AS (
+    SELECT 
+        component_id,
+        iteration,
+        x,
+        y
+    FROM 
+        marching_squares↺ AS ms
+    UNION ALL
+    SELECT 
+        component_id,
+        (SELECT MAX(iteration) + 1 FROM marching_squares↺), -- this guarantees that the closing line will always come last in the following ordering
+        x,
+        y
+    FROM 
+        marching_squares↺ AS ms
+    WHERE 
+        iteration = 1
 )
-select * from marching_squares↺;
---SELECT 
---    x,y,iteration,component_id
---FROM 
---    marching_squares↺
---ORDER BY 
---    component_id,
---    iteration
---select 1;
+SELECT 
+    component_id,
+    array_agg(array[x,y] ORDER BY iteration)
+FROM 
+    closed
+GROUP BY 
+    component_id
+
+);--
+

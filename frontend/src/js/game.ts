@@ -8,7 +8,7 @@ class Game {
                 { name : "pellet", type : "audio", src : "data/sfx/" },
 			],
             score : 0,
-            resolution: [800,800],
+            resolution: [600,540],
             
             maps: [
             	{ pspawn: [5,6],

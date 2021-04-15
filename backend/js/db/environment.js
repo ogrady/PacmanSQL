@@ -21,7 +21,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Environment = void 0;
 const db = __importStar(require("./database"));
-const fp = __importStar(require("../functools"));
+const fp = __importStar(require("../util/functools"));
 class Environment extends db.DBUnit {
     constructor(db) {
         super(db, "./src/db/sql/environment.sql");

@@ -30,7 +30,8 @@ class DFA extends db.DBUnit {
         await super.init();
         await this.func("dfa.create_dfa");
     }
-    tick() {
+    async tick() {
+        return this.exec("SELECT dfa.tick()");
     }
     pathsearchDirect(eid) {
         this.pathfinding.initGhostToPacmanSearch(eid);

@@ -61,3 +61,11 @@ cd backend; npm run dev
 **Q:** Okay, but I *still* see some Typescript?
 
 **A:** Alright, it is true that some functionality is still done in the frontend (for example at the time of writing: spawning actors at random locations). This is subject to change and will be moved to the database once I have finished the more pressing issues.
+
+## Notes to Self
+To start developing, do the following:
+
+1) Make sure Postgres is running: `cd backend && docker-compose up`
+2) Put backend into watch mode: `cd backend && npm run watch-ts`
+3) If working on the frontend, put it into watch mode as well to trigger re-bundling: `cd frontend && npm run start:dev`
+4) http://127.0.0.1:3000

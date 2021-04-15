@@ -70,7 +70,8 @@ class DBUnit {
         const stmts = data.split(";--");
         for (let i = 0; i < stmts.length; i++) {
             await this.run(stmts[i]);
-            this.tables.concat([...stmts[i].matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
+            this.tables = this.tables.concat([...stmts[i]
+                    .matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
                 .map(m => m[1])); // table names
         }
         console.log(`intialised tables: [${this.tables.join(", ")}]`);
@@ -127,4 +128,5 @@ class PacmanDB {
     }
 }
 exports.PacmanDB = PacmanDB;
-exports.str = (x) => `'${x}'`;
+const str = (x) => `'${x}'`;
+exports.str = str;

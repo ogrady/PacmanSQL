@@ -4,7 +4,7 @@ import * as path from "path";
 import * as db from "./db/database";
 import * as reader from "./util/datareader";
 import * as ws from "./server/webserver";
-
+ 
 /*
 // don"t use import-as-syntax, because default imports in TypeScript are a mess.
 const express = require("express");
