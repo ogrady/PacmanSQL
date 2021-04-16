@@ -602,12 +602,29 @@ closed(component_id, iteration, x, y) AS (
         marching_squares↺ AS ms
     WHERE 
         iteration = 1
+),
+reduced(component_id, iteration, x, y, superfluous) AS (
+    SELECT 
+        component_id,
+        iteration,
+        x,
+        y,
+        COALESCE(
+            LEAD(x) OVER(PARTITION BY component_id ORDER BY iteration) = x AND LAG(x) OVER(PARTITION BY component_id ORDER BY iteration) = x
+            OR 
+            LEAD(y) OVER(PARTITION BY component_id ORDER BY iteration) = y AND LAG(y) OVER(PARTITION BY component_id ORDER BY iteration) = y
+        , FALSE) -- first and last piece will be NULL
+          AS superfluous
+    FROM 
+        closed
 )
 SELECT 
     component_id,
     array_agg(array[x,y] ORDER BY iteration)
 FROM 
-    closed
+    reduced
+WHERE 
+    NOT superfluous
 GROUP BY 
     component_id
 
