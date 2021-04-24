@@ -140,7 +140,7 @@ class PlayScreen extends PacScreen {
         console.log("Show play screen");
 
         this.socket.on("map", map => {
-            this.blockSize = [Math.round((this.canvasSize[0] + 3) / map.size.width), Math.round((this.canvasSize[1] + 3) / map.size.height)];
+            this.blockSize = [Math.round(this.canvasSize[0] / map.size.width), Math.round(this.canvasSize[1] / map.size.height)];
             const [w, h] = this.blockSize;
 
             // GRID

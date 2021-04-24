@@ -43,6 +43,12 @@ class Environment extends db.DBUnit {
     getConnectedComponents() {
         return this.exec(`SELECT * FROM environment.connected_components`);
     }
+    getWallShapes() {
+        return this.get(`SELECT * FROM environment.wall_shapes`);
+    }
+    async getMapDimensions() {
+        return (await this.get(`SELECT MAX(x) + 1 AS width, MAX(y) + 1 AS height FROM environment.cells`))[0]; // +1 to compensate for 0-based coordinates
+    }
     async setMap(descriptor) {
         // yes, this may have been easier to read with two for-loops, but I am polishing my FP a bit.
         const lines = descriptor.split("\n").filter(row => row.trim().length > 0); // // remove rows that are completely empty
