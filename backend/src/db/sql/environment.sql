@@ -279,7 +279,7 @@ start_coordinates(x, y, component_id) AS (
     SELECT DISTINCT ON (component_id)
         x, 
         y, 
-        component_id -- -1|-1 so that the actual coordinate is the lower right corner of the resulting square, to match with the shapes in moves
+        component_id
     FROM
         grid
     WHERE 
@@ -302,7 +302,7 @@ marching_squares↺(iteration, x, y, component_id, start) AS (
         x, 
         y, 
         component_id, 
-        (x, y) , (0,0), ''
+        (x, y)
     FROM 
         start_coordinates
     UNION ALL 
@@ -354,9 +354,7 @@ marching_squares↺(iteration, x, y, component_id, start) AS (
         grid.x                      AS x,
         grid.y                      AS y,
         hashes.component_id         AS component_id,
-        hashes.start                AS start,
-        (moves.x_off, moves.y_off),
-        hashes.hash
+        hashes.start                AS start
     FROM 
         hashes
         JOIN moves
