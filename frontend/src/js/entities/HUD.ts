@@ -1,4 +1,4 @@
-import game from '../game';
+import game from "../game";
 import me from '../me';
 
 /**

@@ -1,39 +1,37 @@
-class Game {
-    public data: any;
-    constructor() {
-        this.data = {
-            resources: [
-                //{ name : "pacman", type : "image", src : "data/img/pacman.png" }
-                { name : "bgm", type : "audio", src : "data/bgm/" },
-                { name : "pellet", type : "audio", src : "data/sfx/" },
-            ],
-            score : 0,
-            resolution: [800,800],
-            
-            maps: [
-                { pspawn: [5,6],
-                  espawns: [[2,1]],
-                  shape: `
-xxxxxxxxxxx
-x    x    x
-x xx x xx x
-x  x x x  x
-xx       xx
-xx xx xx xx
-x         x
-x x xxx x x
-x         x
-xxxxxxxxxxx
-`
-},
-{
-    pspawn: [4,5],
-    espawns: [],
-    shape: ``
-}
-]
-        };
-    }
-}
+export abstract class Game {
+    private running: boolean;
+    private tickDelay: number;
+    private refreshIntervalId: NodeJS.Timeout | undefined;
+    private lastTick: number | undefined; // FIXME: use.
 
-export default new Game();
+    public isRunning(): boolean {
+        return this.refreshIntervalId !== undefined;
+    }
+
+    public constructor(tickDelay: number = 33) { //targetFrames: number = 30) { // tickDelay: number = 33
+        this.running = false;
+        this.tickDelay = tickDelay; //1000 / targetFrames;
+    }
+
+    public stop() {
+        if(this.isRunning()) {
+            clearInterval(this.refreshIntervalId as NodeJS.Timeout);
+            this.refreshIntervalId = undefined;
+        }
+    }
+
+    public start() {
+        if(!this.isRunning()) {
+            this.refreshIntervalId = setInterval(this.tick.bind(this), this.tickDelay); // 33 milliseconds = ~ 30 frames per sec
+        }
+    }
+
+    private tick() {
+        const now = Date.now();
+        const delta = now - (this.lastTick ?? now);
+        this.update(delta);
+        this.lastTick = now;
+    }
+
+    protected abstract update(delta: number);
+}

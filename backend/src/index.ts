@@ -4,79 +4,45 @@ import * as path from "path";
 import * as db from "./db/database";
 import * as reader from "./util/datareader";
 import * as ws from "./server/webserver";
- 
-/*
-// don"t use import-as-syntax, because default imports in TypeScript are a mess.
-const express = require("express");
+import * as g from "./game";
 
+class PacmanGame extends g.Game {
+    private pacdb: db.PacmanDB;
+    private webserver: ws.WebServer;
 
-const app = express();
-app.set("port", process.env.PORT || 3000);
+    public constructor(pacdb: db.PacmanDB, webserver: ws.WebServer) {
+        super();
+        this.pacdb = pacdb;
+        this.webserver = webserver;
+    }
 
-const http = require("http").Server(app);
-const io = require("socket.io")(http);
-
-app.get("/", (req: any, res: any) => {
-  res.sendFile(path.resolve("./index.html"));
-});
-
-
-const clients: {[key: number]: socketio.Socket}  = {};
-
-io.on("connection", initSocket);
-
-const server = http.listen(3000, function() {
-  console.log("listening on *:3000");
-});
-
-
-
-
-function initSocket(socket: socketio.Socket) {
-  console.log(`user ${socket.id} connected`);
-  clients[socket.id] = socket;
-
-  socket.on("disconnect", reason => {
-    console.log(`disconnecting user ${socket.id}: ${reason}`);
-    delete clients[socket.id];
-  });
-
-  socket.on("move", data => {
-    console.log(data.eid);
-  });
-
-  socket.on("spawn", (data: SpawnData) => {
-      //const eid = createEntity(data.type, data.x, data.y, data.ẟx, data.ẟy, data.speed);
-  })    
+    protected async update(delta: number) {
+        this.pacdb.environment.updatePositions();
+        this.webserver.broadcast("entities", await this.pacdb.environment.getEntities());
+    }
 }
-
-interface SpawnData {
-    readonly type: string;
-    readonly x: number;
-    readonly y: number;
-    readonly ẟx: number;
-    readonly ẟy: number;
-    readonly speed: number;
-}
-*/
 
 async function main() {
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
     await pacdb.environment.createGhost(1,1);
+    const webserver = new ws.WebServer(pacdb);
+    const game = new PacmanGame(pacdb, webserver);
+
+    webserver.start();
+    game.start();
+
+}
+
+async function test() {
+    const pacdb = await db.PacmanDB.create();
+    await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     /*await pacdb.pathfinding.initSearch(1, [1,1], [4,4]);
     for(let i = 0; i < 10; i++) {
         const x = await pacdb.pathfinding.tickPathsearch();
-        console.log(x);    
+        console.log(x);
     }*/
-
-    const server = new ws.WebServer(pacdb);
-}
-
-async function test() {    
-    const pacdb = await db.PacmanDB.create();
-    await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     /*
     const res = await pacdb.environment.get("SELECT * FROM dfa.edges");
     console.log("HERE GOES")

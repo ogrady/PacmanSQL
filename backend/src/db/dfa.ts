@@ -6,9 +6,7 @@ export class DFA extends db.DBUnit {
 
     public constructor(db: db.PostgresqlConnection, pathfinding: pf.Pathfinding) {
         super(db, "./src/db/sql/dfa.sql");
-
         this.pathfinding = pathfinding;
-
     }
 
     public async init(): Promise<void> {

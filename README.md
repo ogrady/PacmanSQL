@@ -69,3 +69,9 @@ To start developing, do the following:
 2) Put backend into watch mode: `cd backend && npm run watch-ts`
 3) If working on the frontend, put it into watch mode as well to trigger re-bundling: `cd frontend && npm run start:dev`
 4) http://127.0.0.1:3000
+
+or just
+```
+xterm -e "cd $PWD/backend && sudo docker-compose up" &  xterm -e "cd $PWD/backend && npm run watch-node" & xterm -e "cd $PWD/frontend && npm run start:dev-"
+```
+

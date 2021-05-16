@@ -4,14 +4,36 @@ import * as t from "../types";
 
 export type EntityState = [number, number, number, number, number];
 
+export interface Entity {
+    entity_id: number;
+    x: number;
+    y: number;
+    ẟx: number;
+    ẟy: number;
+    speed: number
+    type: "pacman" | "ghost"
+}
+
 export class Environment extends db.DBUnit {
     public constructor(db: db.PostgresqlConnection) {
         super(db, "./src/db/sql/environment.sql");
     }
 
-    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai"): Promise<number> {
+    public async getEntities(): Promise<Entity[]> {
+        return await this.get(`SELECT * FROM environment.entity_components`) as Entity[];
+    }
+
+    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller: string = "ai"): Promise<number> {
         console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}),speed ${speed} and controller ${controller}`);
-        return this.func("environment.create_entity", [type, x, y, ẟx, ẟy, speed, db.str(controller)]);
+        return (await this.func("environment.create_entity", [type, x, y, ẟx, ẟy, speed, db.str(controller)]))[0].create_entity;
+    }
+
+    public async destroyEntity(eid: number): Promise<void> {
+        return this.exec(`DELETE FROM environment.entities WHERE id = ${eid}`);
+    }
+
+    public async destroyPlayer(controller: string): Promise<void> {
+        return this.exec(`DELETE FROM environment.entities WHERE id = (SELECT entity_id FROM environment.controller_components WHERE controller = ${db.str(controller)})`);
     }
 
     public createPlayer(x: number, y: number, controller: string, ẟx = 0, ẟy = 0): Promise<number> {
@@ -73,7 +95,7 @@ export class Environment extends db.DBUnit {
     }
 
     public setPlayerMovement(playerId: number, x: number, y: number): Promise<void> {
-        return this.func("push", [playerId, x, y]);
+        return this.func("environment.push", [playerId, x, y]);
     }
 
     public updatePositions(): Promise<[number, number, number][]> {

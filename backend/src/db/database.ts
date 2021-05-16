@@ -1,7 +1,7 @@
 import * as pg from "pg";
 import * as fs from "fs";
 
-const DEBUG = true;
+const DEBUG = false;
 
 abstract class DBConnection {
     public inner: any;
@@ -20,13 +20,13 @@ export class PostgresqlConnection extends DBConnection {
           port: 5432,
         });
     }
-    
+
     public printQueryResult(sql: string): void {
         const res = this.inner.exec(sql);
         if(res.length > 0) {
-            this.printResult(res[0].columns, res[0].values);  
+            this.printResult(res[0].columns, res[0].values);
         } else {
-            console.log("empty result");  
+            console.log("empty result");
         }
     }
 
@@ -34,7 +34,7 @@ export class PostgresqlConnection extends DBConnection {
         console.log(columns)
         for(const row of values) {
             console.log(row);
-        }  
+        }
     }
 
     public getLastId(): number {
@@ -50,7 +50,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
     protected db: DBConnection;
     protected sqlfile: string;
     protected tables: string[];
-    
+
     public constructor(db: DBConnection, sqlfile: string) {
         this.db = db;
         this.sqlfile = sqlfile;
@@ -81,9 +81,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
 
     public async get(sql: string): Promise<any[]> {
         const res = await this.run(sql);
-        return res.rowCount === 0
-                ? []
-                : res.rows;
+        return res.rowCount === 0 ? [] : res.rows;
     }
 
     public async getSingleValue(sql: string): Promise<any> {
@@ -99,8 +97,9 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         return this.db.inner.query(sql);
     }
 
-    public func(fname: string, args: any[] = []): Promise<any> {
-        return this.run(`SELECT ${fname}(${args.join(", ")})`);
+    public async func(fname: string, args: any[] = []): Promise<any> {
+        const res = await this.run(`SELECT ${fname}(${args.join(", ")})`);
+        return res.rowCount === 0 ? [] : res.rows;
     }
 }
 
@@ -115,7 +114,7 @@ export class PacmanDB {
 
     private constructor() {
         const connection = new PostgresqlConnection();
-        this.environment = new env.Environment(connection);       
+        this.environment = new env.Environment(connection);
         this.pathfinding = new pf.Pathfinding(connection);
         this.dfa = new DFA(connection, this.pathfinding);
     }

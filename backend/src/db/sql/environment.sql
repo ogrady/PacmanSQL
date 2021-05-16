@@ -1,15 +1,22 @@
 DROP SCHEMA IF EXISTS environment CASCADE;
 CREATE SCHEMA environment;
 
-CREATE OR REPLACE FUNCTION the_func(acc anyelement, x anyelement) RETURNS anyelement AS $$
-BEGIN
+-- https://stackoverflow.com/a/1036010
+-- CREATE OR REPLACE FUNCTION update_last_update_column()
+-- RETURNS TRIGGER AS $$ BEGIN
+--    NEW.last_update = now(); 
+--    RETURN NEW;
+-- END $$ LANGUAGE PLPGSQL;--
+
+CREATE OR REPLACE FUNCTION the_func(acc anyelement, x anyelement) 
+RETURNS anyelement AS $$ BEGIN
     IF acc <> x THEN 
         RAISE EXCEPTION 'THE used on an inconsistent list. Expected consistent %, but the list also contained %.', acc, x ;
     END IF;
     RETURN x;
 -- STRICT ignores null values
 END $$ LANGUAGE PLPGSQL;--
-
+    
 
 CREATE OR REPLACE AGGREGATE the(anyelement)
 (
@@ -71,38 +78,47 @@ CREATE TABLE environment.entities(
 
 
 CREATE TABLE environment.type_components(
-    id        SERIAL PRIMARY KEY,
-    entity_id INT,
-    type      INT,
-    FOREIGN KEY(type) REFERENCES environment.entity_types(id)
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT,
+    type        INT,
+    last_update TIMESTAMP,
+    FOREIGN KEY(type) REFERENCES environment.entity_types(id) ON DELETE CASCADE
 );--
+
+--CREATE TRIGGER update_type_components_timestamp AFTER UPDATE
+--    ON environment.type_components FOR EACH ROW EXECUTE PROCEDURE 
+--    update_last_update_column()
+--;--
 
 
 -- components
 CREATE TABLE environment.position_components(
-    id        SERIAL PRIMARY KEY,
-    entity_id INT, 
-    x         FLOAT, 
-    y         FLOAT,
-    FOREIGN KEY(entity_id) REFERENCES environment.entities(id)                
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    x           FLOAT, 
+    y           FLOAT,
+    last_update TIMESTAMP,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
 
 CREATE TABLE environment.movement_components(
-    id        SERIAL PRIMARY KEY,
-    entity_id INT, 
-    ẟx        FLOAT, 
-    ẟy        FLOAT,
-    speed     FLOAT,
-    FOREIGN KEY(entity_id) REFERENCES environment.entities(id)
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    ẟx          FLOAT, 
+    ẟy          FLOAT,
+    speed       FLOAT,
+    last_update TIMESTAMP,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
 
 CREATE TABLE environment.controller_components(
-    id         SERIAL PRIMARY KEY,
-    entity_id  INT, 
-    controller TEXT,
-    FOREIGN KEY(entity_id) REFERENCES environment.entities(id)
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    controller  TEXT,
+    last_update TIMESTAMP,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
 
@@ -562,68 +578,68 @@ $$ LANGUAGE sql;--
 
 
 
-SELECT environment.create_map(11, 10);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,0);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,1);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,1);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,1);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,2);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,3);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,3);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,3);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,3);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,3);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,4);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,4);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,4);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,4);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,5);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,6);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,6);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,7);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,8);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,8);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,9);-------------
-UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,9);-------------
+-- SELECT environment.create_map(11, 10);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,0);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,1);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,1);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,1);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,2);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,3);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,3);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,3);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,3);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,3);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,4);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,4);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,4);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,4);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,5);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,6);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,6);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,7);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,8);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,8);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (1,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (2,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (3,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (4,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (5,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (6,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (7,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (8,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (9,9);-------------
+-- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (10,9);-------------
 
-SELECT * FROM environment.compound_walls order by component_id,x,y;
+-- SELECT * FROM environment.compound_walls order by component_id,x,y;
 
-select * from environment.wall_shapes;
+-- select * from environment.wall_shapes;
