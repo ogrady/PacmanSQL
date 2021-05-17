@@ -30,7 +30,7 @@ enum Direction {
 class PlayScreen extends PacScreen {
     private HUD: HUD | undefined;
     private playerId: number = 0;
-    private pacman: fe.DBRenderable | undefined;
+    private pacman: fe.DBEntity | undefined;
     private entities: {[key: number]: any};
     private pellets: {[key: string]: any};
     private canvasSize: t.Dimensions;
@@ -96,12 +96,12 @@ class PlayScreen extends PacScreen {
             const [w, h] = this.blockSize;
             for(const e of entities) {
                 if(!(e.entity_id in this.entities)) {
-                    const renderable = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h], 2) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], 2, "#ff0000");
-                    this.entities[e.entity_id] = renderable;
-                    me.game.world.addChild(renderable);
+                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h]) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
+                    this.entities[e.entity_id] = dbentity;
+                    me.game.world.addChild(dbentity);
                 } else {
-                    const renderable = this.entities[e.entity_id];
-                    renderable.setPosition(e.x * w, e.y * h);
+                    const dbentity = this.entities[e.entity_id];
+                    dbentity.setPosition(e.x * w, e.y * h);
                 }
             }
         });
@@ -110,8 +110,8 @@ class PlayScreen extends PacScreen {
         this.doKeyBinds();
     }
 
-    public update() {
-        const res = super.update();
+    public update(ms) {
+        const res = super.update(ms);
 
         let x: number = 0;
         let y: number = 0;
