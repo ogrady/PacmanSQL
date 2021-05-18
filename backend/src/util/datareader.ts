@@ -12,7 +12,7 @@ async function parseGraph(pacdb: db.PacmanDB, graph): Promise<void> {
     const edges: [string, string, string, string, string, number][] = [];
     const conditions: Set<string> = new Set();
     const effects: Set<string> = new Set();
-    
+
     // we need to collect all nodes and write them into the DB afterwards,
     // because nodes are not guaranteed any order, but we need to write states, then conditions and effects, then edges and finally DFAs,
     // as they are dependent on each other in said order in reverse.
@@ -32,7 +32,7 @@ async function parseGraph(pacdb: db.PacmanDB, graph): Promise<void> {
         } else if(c.type == "edge_stmt") {
             // EDGE
             const from = c.edge_list[0].id;
-            const to = c.edge_list[0].id;
+            const to = c.edge_list[1].id;
             const weight = c.attr_list.find(attr => attr.id === "weight")?.eq || 1;
             let [condition, effect] = c.attr_list.find(attr => attr.id === "label").eq
                                             .replaceAll(" ", "_")

@@ -14,7 +14,7 @@ export class DFA extends db.DBUnit {
         await this.func("dfa.create_dfa");
     }
 
-    public async tick(): Promise<void> { 
+    public async tick(): Promise<void> {
         return this.exec("SELECT dfa.tick()");
     }
 
@@ -25,21 +25,23 @@ export class DFA extends db.DBUnit {
     public async createEffect(name: string): Promise<number> {
         console.log(`creating effect with name ${name}`);
         return this.exec(`INSERT INTO dfa.effects(fname)
-                                (VALUES (${db.str(name)})) 
+                                (VALUES (${db.str(name)}))
+                                ON CONFLICT (fname) DO UPDATE SET fname = EXCLUDED.fname
                                 RETURNING id`);
     }
 
     public async createCondition(name: string): Promise<number> {
         console.log(`creating condition with name ${name}`);
         return this.exec(`INSERT INTO dfa.conditions(fname)
-                                (VALUES (${db.str(name)})) 
+                                (VALUES (${db.str(name)}))
+                                ON CONFLICT (fname) DO UPDATE SET fname = EXCLUDED.fname
                                 RETURNING id`);
     }
 
     public async createDFA(name: string, initState: string): Promise<number> {
         console.log(`creating DFA ${name} with initial state ${initState}`);
-        return (await this.exec(`INSERT INTO dfa.dfa(name, initial_state) 
-                                    (VALUES (${db.str(name)}, 
+        return (await this.exec(`INSERT INTO dfa.dfa(name, initial_state)
+                                    (VALUES (${db.str(name)},
                                             (SELECT id FROM dfa.states WHERE name = ${db.str(initState)})
                                     ))
                                   RETURNING id`)).rows[0].id;
@@ -55,7 +57,7 @@ export class DFA extends db.DBUnit {
                 SELECT CASE _fname
                     ${conditions.join("\n")}
                     ELSE FALSE
-                END; 
+                END;
             $$ LANGUAGE sql;`);
 
         // effects
@@ -66,15 +68,13 @@ export class DFA extends db.DBUnit {
             RETURNS VOID AS $$
                 SELECT CASE _fname
                     ${effects.join("\n")}
-                END; 
+                END;
             $$ LANGUAGE sql;`);
     }
 
     public async createState(name: string): Promise<number> {
         console.log(`creating state ${name}`);
-        return (await this.exec(`INSERT INTO dfa.states(name) 
-                                    (VALUES (${db.str(name)}))
-                                  RETURNING id`)).rows[0].id;
+        return (await this.exec(`INSERT INTO dfa.states(name) (VALUES (${db.str(name)})) RETURNING id`)).rows[0].id;
     }
 
     public async createEdge(dfa: string, state1: string, state2: string, effect: string, condition: string, weight = 1): Promise<number> {

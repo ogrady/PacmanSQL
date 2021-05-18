@@ -5,6 +5,15 @@ strict digraph aggressive {
     
     searching -> chasing [label="path ready;"]
     chasing -> thinking [label=";"]
-    chasing -> chasing [label="path ready;follow path"]
+    chasing -> chasing [label="path ready;follow path",weight=2]
     thinking -> searching [label=";pathsearch nearest"]
+}
+
+strict digraph wandering {
+    walking
+    turning[init=true]
+
+    turning -> walking [label=";turn 90 degrees cw"]
+    walking -> turning [label="movement is blocked;",weight=2]
+    walking -> walking [label=";"]
 } 

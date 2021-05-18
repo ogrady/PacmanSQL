@@ -37,7 +37,7 @@ CREATE TABLE dfa.entity_states(
 
 CREATE TABLE dfa.effects(
     id    SERIAL PRIMARY KEY,
-    fname TEXT   
+    fname TEXT UNIQUE
 );--
 
 
@@ -54,7 +54,7 @@ CREATE TABLE dfa.effect_closures(
 
 CREATE TABLE dfa.conditions(
     id    SERIAL PRIMARY KEY,
-    fname TEXT
+    fname TEXT UNIQUE
 );--
 
 
@@ -149,13 +149,58 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql;--
 
 
-CREATE FUNCTION dfa.dispatch_condition(_eid INT, _fname TEXT)
+CREATE FUNCTION dfa.cond_movement_is_blocked(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT FALSE; -- stub. Is replaced through JavaScript code generation
+    SELECT 
+        NOT (COALESCE (c.passable, TRUE))
+    FROM 
+        environment.entity_components AS ec
+        JOIN environment.cells AS c
+          ON ROUND(ec.x + ec.ẟx + 0.0) = c.x AND 
+             ROUND(ec.y + ec.ẟy + 0.0) = c.y
+    WHERE 
+        ec.entity_id = _eid
 $$ LANGUAGE sql;--
 
 
+CREATE FUNCTION dfa.dispatch_condition(_eid INT, _fname TEXT)
+RETURNS BOOLEAN AS $$
+    SELECT FALSE; -- stub. Is replaced through JavaScript code generation when importing the DFA from gviz
+$$ LANGUAGE sql;--
+
+
+CREATE FUNCTION dfa.normalise(_ẟ FLOAT) 
+RETURNS FLOAT AS $$
+    SELECT CASE _ẟ 
+        WHEN 0 THEN 0.0
+        ELSE _ẟ / ABS(_ẟ)
+    END
+$$ LANGUAGE sql;--
+
 -- effects
+CREATE FUNCTION dfa.eff_turn_90_degrees_cw(_eid INT)
+RETURNS VOID AS $$
+    WITH turns(x, y, new_x, new_y) AS (
+        (VALUES 
+            ( 1, 0, 0, 1), -- → ↓
+            ( 0, 1,-1, 0), -- ↓ ←
+            (-1, 0, 0,-1), -- ← ^
+            ( 0,-1, 1, 0)  -- ^ →
+        )
+    )
+    UPDATE environment.movement_components AS upd
+    SET 
+        ẟx = turns.new_x * ABS(mc.ẟy), -- x and y are switched on purpose here
+        ẟy = turns.new_y * ABS(mc.ẟx)  -- as the delta from one axis gets carried over to the other axis upon turning by 90°
+    FROM 
+        environment.movement_components AS mc 
+        JOIN turns 
+          ON mc.entity_id = _eid AND (dfa.normalise(mc.ẟx), dfa.normalise(mc.ẟy)) = (turns.x, turns.y)
+    WHERE
+        upd.entity_id = _eid
+$$ LANGUAGE sql;--
+
+
 CREATE FUNCTION dfa.eff_follow_path(_eid INT)
 RETURNS VOID AS $$
     UPDATE environment.position_components 
@@ -178,23 +223,37 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION dfa.eff_pathsearch_nearest(_eid INT)
 RETURNS VOID AS $$
+    WITH nearest(entity_id) AS (
+        SELECT
+            them.entity_id
+        FROM 
+            environment.entity_components AS me,
+            environment.entity_components AS them
+        WHERE 
+            me.entity_id = _eid
+            AND them.type = 'pacman'
+        ORDER BY 
+            ABS(me.x - them.x) + ABS(me.y - them.y)
+        LIMIT 1
+    )
     SELECT pathfinding.init_entity_to_entity_search(
                 _eid, 
-                (SELECT id FROM environment.entities WHERE id != _eid) -- FIXME: actually look for nearest pacman
+                (SELECT entity_id FROM nearest)
+                --(SELECT id FROM environment.entities WHERE id != _eid) -- FIXME: actually look for nearest pacman
     );
 $$ LANGUAGE sql;--
 
 
 CREATE FUNCTION dfa.dispatch_effect(_eid INT, _fname TEXT)
 RETURNS VOID AS $$
-    SELECT 1; -- stub, replaced by JavaScript code generation
+    SELECT 1; -- stub, replaced by JavaScript code generation when importing the DFA from gviz
 $$ LANGUAGE sql;--
 
 
 CREATE FUNCTION dfa.tick()
 RETURNS VOID AS $$
     WITH new_states(entity_id, new_state, effect_name) AS (
-        SELECT 
+        SELECT DISTINCT ON (s.entity_id)
             s.entity_id, 
             e.next_state,
             dfa.dispatch_effect(s.entity_id, ef.fname)
@@ -207,7 +266,9 @@ RETURNS VOID AS $$
             LEFT JOIN dfa.effects AS ef -- effects can be NULL!
               ON e.effect_id = ef.id
         WHERE 
-            dfa.dispatch_condition(s.entity_id, c.fname)  
+            dfa.dispatch_condition(s.entity_id, c.fname)
+        ORDER BY 
+            s.entity_id, e.weight DESC
     )
     --SELECT entity_id, new_state, effect_name FROM new_states
     INSERT INTO dfa.state_buffer(entity_id, new_state) 
@@ -220,4 +281,7 @@ RETURNS VOID AS $$
         dfa.state_buffer AS buffer
     WHERE 
         current.entity_id = buffer.entity_id
+    ;
+
+    DELETE FROM dfa.state_buffer;
 $$ LANGUAGE sql;--

@@ -20,8 +20,10 @@ class PacmanGame extends g.Game {
     }
 
     protected async update(delta: number) {
+        this.pacdb.dfa.tick();
         this.pacdb.environment.updatePositions();
         this.webserver.broadcast("entities", await this.pacdb.environment.getEntities());
+        /*
         const dice = 100 * Math.random();
         if(dice < 1) {
           await this.pacdb.environment.setPlayerMovement(ghostid, 0, 1);
@@ -35,6 +37,7 @@ class PacmanGame extends g.Game {
         else if(dice < 4) {
           await this.pacdb.environment.setPlayerMovement(ghostid, -1, 0);
         }
+        */
     }
 }
 
@@ -46,6 +49,11 @@ async function main() {
     await reader.readMap(pacdb, "./data/map.txt");
     ghostid = await pacdb.environment.createGhost(1,1);
     await pacdb.environment.setPlayerMovement(ghostid, 0, 1);
+    await pacdb.environment.exec(`insert into dfa.entity_states(entity_id, dfa_id, state_id) (values
+        (1,
+        (select dfa_id from dfa.edges where current_state = (select id from dfa.states where name='turning') limit 1),
+        (select id from dfa.states where name='turning')))`);
+
     const webserver = new ws.WebServer(pacdb);
     const game = new PacmanGame(pacdb, webserver);
 
