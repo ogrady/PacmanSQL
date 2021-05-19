@@ -6,8 +6,8 @@ import HUD from "../entities/HUD";
 import * as fe from "../frontend";
 import * as t from "../types";
 import * as fp from "../functools";
-
 import * as bs from "../main";
+import * as U from "../util";
 
 const DRAW_GRID = false;
 
@@ -29,6 +29,7 @@ class PlayScreen extends PacScreen {
     private blockSize: t.Dimensions;
     private map: any;
     private touchDirection: Direction;
+    private pacmanColours: string[];
 
     public constructor(canvasSize: t.Dimensions) {
         super();
@@ -37,10 +38,17 @@ class PlayScreen extends PacScreen {
         this.canvasSize = canvasSize;
         this.blockSize = [0,0];
         this.touchDirection = Direction.None;
+        this.pacmanColours = [...Array(10).keys()].map(_ => U.rgbToHex(U.randomColour())); // give us list comprehensions already!
+        console.log(this.pacmanColours);
     }
 
     private hashCoordinate(x: number, y: number): string {
         return `${x}|${y}`; // hurrr
+    }
+
+
+    private eidToColour(eid: number): string {
+        return this.pacmanColours[eid%this.pacmanColours.length];
     }
 
     public onload() {
@@ -58,9 +66,6 @@ class PlayScreen extends PacScreen {
         //me.audio.play("bgm");
         console.log("Show play screen", this);
         const that = this;
-        const r = new me.Entity(0,0, {width: this.canvasSize[0], height: this.canvasSize[1]}); //new me.Rect(0, 0, this.canvasSize[0], this.canvasSize[1]);
-        me.game.world.addChild(r);
-        me.input.registerPointerEvent('pointerdown', r, this.pointerDown.bind(this));
 
         bs.Bootstrap.getInstance().on("touch-up",   () => that.touchDirection = Direction.Up);
         bs.Bootstrap.getInstance().on("touch-down", () => that.touchDirection = Direction.Down);
@@ -98,7 +103,7 @@ class PlayScreen extends PacScreen {
             const [w, h] = this.blockSize;
             for(const e of entities) {
                 if(!(e.entity_id in this.entities)) {
-                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h]) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
+                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h], this.eidToColour(e.entity_id)) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
                     this.entities[e.entity_id] = dbentity;
                     me.game.world.addChild(dbentity);
                 } else {

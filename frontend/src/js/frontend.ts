@@ -1,17 +1,9 @@
 import me from "./me";
 import * as fp from "./functools";
 import * as t from "./types";
+import * as U from "./util";
 
 export const BACKGROUND_COLOUR = "#00121c";
-
-function hexToRgb(hex: string): [number,number,number] {
-  var res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return res ? res.slice(1).map(c => parseInt(c, 16)) as [number,number,number] : [255,255,255];
-}
-
-function gradToRad(degrees: number): number {
-    return degrees * (Math.PI / 180);
-}
 
 export abstract class DBEntity extends me.Entity {
     public readonly dbId: number;
@@ -94,7 +86,7 @@ export class Ghost extends DBEntity {
 
         this.body.addAnimation("walk", [0,1], 400);
         this.body.setCurrentAnimation("walk");
-        this.body.tint.setColor(...hexToRgb(this.colour));
+        this.body.tint.setColor(...U.hexToRgb(this.colour));
 
         this.eyes.addAnimation("down", [0]);
         this.eyes.addAnimation("up", [1]);
@@ -107,18 +99,6 @@ export class Ghost extends DBEntity {
         this.renderable.pos = this.pos;
         this.renderable.addChild(this.body);
         this.renderable.addChild(this.eyes);
-    }
-
-    public update(ms: number) {
-        const res = super.update(ms);
-        //this.eyes.update(ms);
-        return res;
-    }
-
-    public draw(renderer) {
-        const res = super.draw(renderer);
-        //this.eyes.draw(renderer);
-        return res;
     }
 
     protected faceLeft() {
@@ -147,7 +127,7 @@ export class Pacman extends DBEntity {
     private nextFrame = 1;
     private accu = 0;
 
-    public constructor(dbId: number, position: t.Coordinate) {
+    public constructor(dbId: number, position: t.Coordinate, colour = "#f5e642") {
         super(dbId, position[0], position[1], {width: 46, height: 46});
 
         this.renderable = new me.Sprite(position[0], position[1], {
@@ -159,7 +139,7 @@ export class Pacman extends DBEntity {
         this.renderable.addAnimation("walk", [0,1,2,3,4,5], 100);
         this.renderable.addAnimation("stand", [3], 100);
         this.renderable.setCurrentAnimation("walk");
-        this.renderable.tint.setColor(245, 230, 66)
+        this.renderable.tint.setColor(...U.hexToRgb(colour));
     }
 
     protected faceLeft() {
@@ -173,11 +153,11 @@ export class Pacman extends DBEntity {
     }
 
     protected faceUp() {
-        this.absoluteRotation(gradToRad(-90));
+        this.absoluteRotation(U.gradToRad(-90));
     }
 
     protected faceDown() {
-        this.absoluteRotation(gradToRad(90));
+        this.absoluteRotation(U.gradToRad(90));
     }
 }
 
