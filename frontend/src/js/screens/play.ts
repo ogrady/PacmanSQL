@@ -7,6 +7,8 @@ import * as fe from "../frontend";
 import * as t from "../types";
 import * as fp from "../functools";
 
+import * as bs from "../main";
+
 const DRAW_GRID = false;
 
 enum Direction {
@@ -17,16 +19,6 @@ enum Direction {
   Right
 }
 
-/*
-  var socket = io();
-
-  var form = document.getElementById("form");
-  var input = document.getElementById("input");
-
-  socket.emit("move", {eid: 1, x: 1, y: 0});
-*/
-
-
 class PlayScreen extends PacScreen {
     private HUD: HUD | undefined;
     private playerId: number = 0;
@@ -36,6 +28,7 @@ class PlayScreen extends PacScreen {
     private canvasSize: t.Dimensions;
     private blockSize: t.Dimensions;
     private map: any;
+    private touchDirection: Direction;
 
     public constructor(canvasSize: t.Dimensions) {
         super();
@@ -43,13 +36,14 @@ class PlayScreen extends PacScreen {
         this.pellets = {};
         this.canvasSize = canvasSize;
         this.blockSize = [0,0];
+        this.touchDirection = Direction.None;
     }
 
     private hashCoordinate(x: number, y: number): string {
         return `${x}|${y}`; // hurrr
     }
 
-    onload() {
+    public onload() {
         console.log("loading...")
     }
 
@@ -60,10 +54,18 @@ class PlayScreen extends PacScreen {
         me.input.bindKey(me.input.KEY.D, Direction.Right);
     }
 
-
     public async onResetEvent() {
         //me.audio.play("bgm");
-        console.log("Show play screen");
+        console.log("Show play screen", this);
+        const that = this;
+        const r = new me.Entity(0,0, {width: this.canvasSize[0], height: this.canvasSize[1]}); //new me.Rect(0, 0, this.canvasSize[0], this.canvasSize[1]);
+        me.game.world.addChild(r);
+        me.input.registerPointerEvent('pointerdown', r, this.pointerDown.bind(this));
+
+        bs.Bootstrap.getInstance().on("touch-up",   () => that.touchDirection = Direction.Up);
+        bs.Bootstrap.getInstance().on("touch-down", () => that.touchDirection = Direction.Down);
+        bs.Bootstrap.getInstance().on("touch-left", () => that.touchDirection = Direction.Left);
+        bs.Bootstrap.getInstance().on("touch-right",() => that.touchDirection = Direction.Right);
 
         this.socket.on("map", map => {
             this.blockSize = [Math.round(this.canvasSize[0] / map.size.width), Math.round(this.canvasSize[1] / map.size.height)];
@@ -115,15 +117,16 @@ class PlayScreen extends PacScreen {
 
         let x: number = 0;
         let y: number = 0;
-        if (me.input.isKeyPressed(Direction.Left))  {
+        if (me.input.isKeyPressed(Direction.Left) || this.touchDirection == Direction.Left)  {
             x = -1;
-        } else if (me.input.isKeyPressed(Direction.Right))  {
+        } else if (me.input.isKeyPressed(Direction.Right) || this.touchDirection == Direction.Right)  {
             x = 1;
-        } else if (me.input.isKeyPressed(Direction.Up)) {
+        } else if (me.input.isKeyPressed(Direction.Up) || this.touchDirection == Direction.Up) {
             y = -1;
-        } else if (me.input.isKeyPressed(Direction.Down))  {
+        } else if (me.input.isKeyPressed(Direction.Down) || this.touchDirection == Direction.Down)  {
             y = 1;
         }
+        this.touchDirection = Direction.None;
 
         if(x != 0 || y != 0) {
             this.socket.emit("move", {x:x, y:y});
