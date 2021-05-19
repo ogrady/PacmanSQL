@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",                          
+    "module": "commonjs",                   
+    "lib": ["esnext", "dom"],                     
+    "allowJs": true,
+    "outDir": "js",                          
+    "rootDir": "src",
+    "strict": true,         
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "typeRoots": [ "./types", "./node_modules/@types"]
+  },
+  "exclude": [
+    "node_modules", 
+    "typings", 
+    "build", 
+    "dist",
+    "js", 
+    "test",
+    "babel.config.js", "webpack.config.js"
+  ]
+}
