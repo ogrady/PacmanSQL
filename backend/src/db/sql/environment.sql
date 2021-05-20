@@ -143,6 +143,25 @@ CREATE TABLE environment.type_components(
 
 
 -- components
+CREATE TABLE environment.extent_components(
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    width       INT,
+    height      INT,
+    last_update TIMESTAMP,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
+);--
+
+CREATE TABLE environment.colour_components(
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    red         INT CHECK (red BETWEEN 0 AND 255),
+    green       INT CHECK (green BETWEEN 0 AND 255),
+    blue        INT CHECK (blue BETWEEN 0 AND 255),
+    last_update TIMESTAMP,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
+);--
+
 CREATE TABLE environment.position_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
@@ -176,15 +195,22 @@ CREATE TABLE environment.controller_components(
 ---------------------------------------------------------------
 -- VIEWS
 ---------------------------------------------------------------
-CREATE VIEW environment.entity_components(entity_id, x, y, ẟx, ẟy, speed, type) AS (
+CREATE VIEW environment.entity_components(entity_id, x, y, width, height, center_x, center_y, ẟx, ẟy, speed, type, red, green, blue) AS (
         SELECT 
             e.id,
             pc.x, 
             pc.y,
+            ext.width,
+            ext.height,
+            pc.x + ext.width/2  AS center_x,
+            pc.y + ext.height/2 AS center_y,
             mc.ẟx,
             mc.ẟy,
             mc.speed,
-            et.name
+            et.name,
+            col.red,
+            col.green,
+            col.blue
         FROM 
             environment.entities AS e 
             LEFT JOIN environment.position_components AS pc 
@@ -195,6 +221,10 @@ CREATE VIEW environment.entity_components(entity_id, x, y, ẟx, ẟy, speed, ty
               ON tc.entity_id = e.id
             LEFT JOIN environment.entity_types AS et 
               ON tc.type = et.id
+            LEFT JOIN environment.extent_components AS ext
+              ON ext.entity_id = e.id
+            LEFT JOIN environment.colour_components AS col 
+              ON col.entity_id = e.id
 );--
 
 
@@ -597,7 +627,7 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
 $$ LANGUAGE sql;--
 
 
-CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT)
+CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _width INT, _height INT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
 RETURNS INT AS $$
     WITH 
     new_entity(eid) AS (
@@ -614,9 +644,29 @@ RETURNS INT AS $$
     ),
     cc AS (
         INSERT INTO environment.controller_components(entity_id, controller) (VALUES ((SELECT eid FROM new_entity), _controller))
+    ),
+    ext AS (
+        INSERT INTO environment.extent_components(entity_id, width, height) (VALUES ((SELECT eid FROM new_entity), _width, _height))
+    ),
+    col AS (
+        INSERT INTO environment.colour_components(entity_id, red, green, blue) (VALUES ((SELECT eid FROM new_entity), _red, _green, _blue))
     )
     SELECT eid FROM new_entity    
 $$ LANGUAGE sql;--
+
+CREATE FUNCTION environment.create_player(_x INT, _y INT, _controller TEXT)
+RETURNS INT AS $$
+    SELECT environment.create_entity('pacman', _x, _y, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT)  
+$$ LANGUAGE sql;--
+
+CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
+RETURNS INT AS $$
+    WITH 
+    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 30, 30, 0, 0, 0.03, 'ai', _r, _g, _b)),
+    dfa_setup(id) AS (SELECT dfa.setup_entity(entity.id, _dfa) FROM entity)
+    SELECT id FROM entity
+$$ LANGUAGE sql;--
+
 
 
 CREATE FUNCTION environment.create_map(_w INT, _h INT)

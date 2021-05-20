@@ -153,15 +153,19 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION dfa.cond_movement_is_blocked(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT 
-        NOT (COALESCE (c.passable, TRUE))
+    SELECT
+        COUNT(*) > 0
+        --NOT (COALESCE (c.passable, TRUE))
     FROM 
         environment.entity_components AS ec
         JOIN environment.cells AS c
+          --ON c.x BETWEEN ec.x AND ec.x + ec.width OR
+          --   c.y BETWEEN ec.y AND ec.y + ec.height
           ON ROUND(ec.x + ec.ẟx + 0.0) = c.x AND 
              ROUND(ec.y + ec.ẟy + 0.0) = c.y
     WHERE 
         ec.entity_id = _eid
+        AND NOT c.passable
 $$ LANGUAGE sql;--
 
 

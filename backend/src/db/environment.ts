@@ -23,9 +23,9 @@ export class Environment extends db.DBUnit {
         return await this.get(`SELECT * FROM environment.entity_components`) as Entity[];
     }
 
-    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller: string = "ai", dfa = ""): Promise<number> {
-        console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}),speed ${speed} and controller ${controller}`);
-        const eid = (await this.func("environment.create_entity", [db.str(type), x, y, ẟx, ẟy, speed, db.str(controller)]))[0].create_entity;
+    private async createEntity(type: string, x: number, y: number, width: number, height: number, {ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai", dfa = "", r = 100, g = 0, b = 100} = {}): Promise<number> {
+        console.log(`creating entity of type ${type} at (${x}, ${y}), of size ${width}x${height}, with movement (${ẟx}, ${ẟy}), speed ${speed} and controller ${controller}`);
+        const eid = (await this.func("environment.create_entity", [db.str(type), x, y, width, height, ẟx, ẟy, speed, db.str(controller)]), r, g, b)[0].create_entity;
         if(dfa) {
             this.func("dfa.setup_entity", [eid, db.str(dfa)]);
         }
@@ -36,16 +36,18 @@ export class Environment extends db.DBUnit {
         return this.exec(`DELETE FROM environment.entities WHERE id = ${eid}`);
     }
 
-    public async destroyPlayer(controller: string): Promise<void> {
-        return this.exec(`DELETE FROM environment.entities WHERE id = (SELECT entity_id FROM environment.controller_components WHERE controller = ${db.str(controller)})`);
+    public async destroyPlayer(controller: string): Promise<number> {
+        return (await this.get(`DELETE FROM environment.entities WHERE id = (SELECT entity_id FROM environment.controller_components WHERE controller = ${db.str(controller)}) RETURNING id`))[0].id;
     }
 
-    public createPlayer(x: number, y: number, controller: string, ẟx = 0, ẟy = 0): Promise<number> {
-        return this.createEntity("pacman", x, y, ẟx, ẟy, 0.04, controller);
+    public async createPlayer(x: number, y: number, controller: string): Promise<number> {
+        return (await this.func(`environment.create_player`, [x, y, db.str(controller)]))[0].id;
+        //return this.createEntity("pacman", x, y, 30, 30, ẟx, ẟy, 0.04, controller);
     }
 
     public async createGhost(x: number, y: number, dfa = ""): Promise<number> {
-        return this.createEntity("ghost", x, y, 0, 0, 0.03, "ai", dfa);
+        return (await this.func(`environment.create_ghost`, [x, y, 255, 0, 0, db.str(dfa)]))[0].id;
+        //return this.createEntity("ghost", x, y, 30, 30, {speed: 0.03, controller: "ai", dfa: dfa});
     }
 
     private createMap(w: number, h: number): Promise<void> {

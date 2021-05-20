@@ -38,15 +38,17 @@ export class WebServer {
         console.log(`user ${socket.id} connected`);
 
         // create player
-        const playerId = await this.pacdb.environment.createPlayer(3,4, socket.id, 0, 0);
+        const playerId = await this.pacdb.environment.createPlayer(3,4, socket.id);
         // fixme: network component in DB
         this.clients[socket.id] = {socket: socket, entityId: playerId};
 
         // bindings
-        socket.on("disconnect", reason => {
+        socket.on("disconnect", async reason => {
           console.log(`disconnecting user ${socket.id}: ${reason}`);
-          this.pacdb.environment.destroyPlayer(socket.id);
+          const eid = await this.pacdb.environment.destroyPlayer(socket.id);
           delete this.clients[socket.id];
+          console.log(eid);
+          this.broadcast("destroy-entity", {id: eid});
         });
 
         socket.on("move", data => {
