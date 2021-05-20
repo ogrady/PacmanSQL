@@ -24,6 +24,57 @@ CREATE OR REPLACE AGGREGATE the(anyelement)
     stype = anyelement
 );--
 
+
+
+---------------------------------------------------------------
+-- DATA TYPES WITH METHODS
+---------------------------------------------------------------
+-- determines the length of _v.
+CREATE FUNCTION environment.length(_v POINT) RETURNS DOUBLE PRECISION AS $$
+    SELECT SQRT(_v[0] * _v[0] + _v[1] * _v[1]);
+$$ LANGUAGE sql IMMUTABLE;
+
+-- subtracts _v1 from _v2.
+CREATE FUNCTION environment.sub(_v1 POINT, _v2 POINT) RETURNS POINT AS $$
+    SELECT POINT(_v2[0] - _v1[0], _v2[1] - _v1[1]);
+$$ LANGUAGE sql IMMUTABLE;
+
+-- adds _v1 to _v2.
+CREATE FUNCTION environment.add(_v1 POINT, _v2 POINT) RETURNS POINT AS $$
+    SELECT POINT(_v2[0] + _v1[0], _v2[1] + _v1[1]);
+$$ LANGUAGE sql IMMUTABLE;
+
+-- multiplies _v and _x.
+CREATE FUNCTION environment.mul(_v POINT, _x FLOAT) RETURNS POINT AS $$
+    SELECT POINT(_x * _v[0], _x * _v[1]);
+$$ LANGUAGE sql IMMUTABLE;
+
+-- multiplies _v1 and _v2.
+CREATE FUNCTION environment.mul(_v1 POINT, _v2 POINT) RETURNS POINT AS $$
+    SELECT POINT(_v2[0] * _v1[0], _v2[1] * _v1[1]);
+$$ LANGUAGE sql IMMUTABLE;
+
+-- calculates the distance between _v1 and _v2.
+CREATE FUNCTION environment.distance(_v1 POINT, _v2 POINT) RETURNS DOUBLE PRECISION AS $$
+    SELECT SQRT((_v1[0] - _v2[0]) * (_v1[0] - _v2[0]) + (_v1[1] - _v2[1]) * (_v1[1] - _v2[1]));
+$$ LANGUAGE sql IMMUTABLE;
+
+-- normalises _v to length 1. Vectors of length 0 will result in (0 0).
+CREATE FUNCTION environment.normalise(_v POINT) RETURNS POINT AS $$
+    SELECT CASE WHEN environment.length(_v) = 0
+                THEN POINT(0,0)
+                ELSE POINT(
+                    _v[0] / environment.length(_v),
+                    _v[1] / environment.length(_v)
+                )
+            END;
+$$ LANGUAGE sql IMMUTABLE;
+
+-- scales length of _v to _x
+CREATE FUNCTION environment.scale(_v POINT, _x FLOAT) RETURNS POINT AS $$
+    SELECT environment.mul(environment.normalise(_v), _x);
+$$ LANGUAGE sql IMMUTABLE;
+
 ---------------------------------------------------------------
 -- TABLES
 ---------------------------------------------------------------
@@ -453,13 +504,36 @@ CREATE VIEW environment.visual_map(content) AS (
 ---------------------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------------------
+CREATE FUNCTION environment.start_towards(_eid INT, _pos POINT)
+RETURNS VOID AS $$
+    WITH 
+    scaled(v) AS (
+        SELECT 
+            environment.scale(environment.sub(POINT(pc.x, pc.y), _pos), LEAST(mc.speed, environment.length(environment.sub(POINT(pc.x, pc.y), _pos))))
+        FROM 
+            environment.position_components AS pc
+            JOIN environment.movement_components AS mc
+              ON pc.entity_id = mc.entity_id
+        WHERE
+            pc.entity_id = _eid
+    )
+    UPDATE environment.movement_components
+    SET 
+        ẟx = scaled.v[0],
+        ẟy = scaled.v[1]
+    FROM 
+        scaled
+    WHERE 
+        entity_id = _eid
+$$ LANGUAGE sql;--
+
 CREATE FUNCTION environment.update_positions()
 RETURNS TABLE(eid INT, x INT, y INT) AS $$
     WITH upd(entity_id, new_x, new_y) AS (
         SELECT 
             ec.entity_id,
-            ec.x + ec.ẟx,
-            ec.y + ec.ẟy
+            ROUND((ec.x + ec.ẟx)::numeric, 2), -- https://stackoverflow.com/questions/13113096/how-to-round-an-average-to-2-decimal-places-in-postgresql/13113623#comment17829941_13113623
+            ROUND((ec.y + ec.ẟy)::numeric, 2)
         FROM
             environment.entity_components AS ec 
             JOIN environment.cells AS c 

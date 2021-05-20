@@ -86,47 +86,49 @@ CREATE TABLE dfa.edges(
 ---------------------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------------------
-CREATE FUNCTION dfa.setup_entity(_eid INT, _dfaid INT)
+CREATE VIEW dfa.overview AS (
+    SELECT
+        ec.*,
+        es.dfa_id        AS dfa_id,
+        start.name       AS current_state,
+        destination.name AS next_state,
+        c.fname          AS condition_function,
+        eff.fname        AS effect_function ,
+        e.weight         AS weight
+    FROM 
+        dfa.entity_states AS es
+        JOIN environment.entity_components AS ec
+          ON es.entity_id = ec.entity_id
+        JOIN dfa.states AS start
+          ON es.state_id = start.id
+        JOIN dfa.edges AS e
+          ON e.current_state = start.id
+        JOIN dfa.states AS destination
+          ON e.next_state = destination.id
+        JOIN dfa.conditions AS c
+          ON e.condition_id = c.id
+        LEFT JOIN dfa.effects AS eff
+          ON e.effect_id = eff.id
+    ORDER BY 
+        es.entity_id, weight DESC
+);--
+
+---------------------------------------------------------------
+-- FUNCTIONS
+---------------------------------------------------------------
+CREATE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) --_dfaid INT)
 RETURNS VOID AS $$
     INSERT INTO dfa.entity_states(entity_id, dfa_id, state_id) VALUES(
         _eid,
-        _dfaid,
-        (SELECT initial_state FROM dfa.dfa WHERE id = _dfaid)
+        (SELECT id FROM dfa.dfa AS dfa WHERE dfa.name = _dfaname),--_dfaid,
+        (SELECT initial_state FROM dfa.dfa AS dfa WHERE dfa.name = _dfaname) --WHERE id = _dfaid)
     );
 $$ LANGUAGE sql;--
 
 
 CREATE FUNCTION dfa.create_dfa()
 RETURNS VOID AS $$
-    SELECT 1;
-    --INSERT INTO dfa.conditions(fname) (VALUES 
-    --    ('cond_true'),
-    --    ('cond_path_available'),   -- 2, still path left
-    --    ('cond_idle')              -- 3, no path left
-    --);
---
-    --INSERT INTO dfa.effects(fname) (VALUES 
-    --    ('eff_move_next_cell'),    -- 1
-    --    ('eff_pathsearch_nearest') -- 2
-    --);
---
-    --INSERT INTO dfa.states(name) (VALUES 
-    --    ('chasing'),   -- 1, following path
-    --    ('searching'), -- 2, waiting for path search to complete
-    --    ('thinking')   -- 3, starting path search to next target
-    --);
---
-    --INSERT INTO dfa.dfa(name, initial_state) (VALUES 
-    --    ('stupid ghost', 1)     
-    --);
---
-    --INSERT INTO dfa.edges(
-    --    dfa_id, current_state, condition_id, effect_id, next_state, weight) (VALUES
-    --    (1,     3,             1,            2,         2,          10), -- in idle, initialise path search
-    --    (1,     2,             2,            null,      1,          10), -- in searching state if path is ready, start chasing
-    --    (1,     1,             3,            null,      3,          10), -- in chasing, if path is done go back to thinking
-    --    (1,     1,             2,            1,         1,          10)  -- in chasing, if path is available, follow path
-    --);    
+    SELECT 1; 
 $$ LANGUAGE sql;--
 
 
@@ -160,6 +162,12 @@ RETURNS BOOLEAN AS $$
              ROUND(ec.y + ec.ẟy + 0.0) = c.y
     WHERE 
         ec.entity_id = _eid
+$$ LANGUAGE sql;--
+
+
+CREATE FUNCTION dfa.cond_pacman_present(_eid INT)
+RETURNS BOOLEAN AS $$
+    SELECT COUNT(*) > 0 FROM environment.entity_components WHERE type = 'pacman'
 $$ LANGUAGE sql;--
 
 
@@ -203,21 +211,34 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION dfa.eff_follow_path(_eid INT)
 RETURNS VOID AS $$
-    UPDATE environment.position_components 
-    SET 
-        x = new.position_x, 
-        y = new.position_y
-    FROM 
-        (SELECT position_x, position_y FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1) AS new
-    WHERE
-        entity_id = _eid
-    ;
+    SELECT environment.start_towards(_eid, (SELECT POINT(position_x, position_y) FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1));
+    --UPDATE environment.position_components 
+    --SET 
+    --    x = new.position_x, 
+    --    y = new.position_y
+    --FROM 
+    --    (SELECT position_x, position_y FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1) AS new
+    --WHERE
+    --    entity_id = _eid
+    --;
 
+    -- each entity will only pass each cell once per path (or it would not be the shortest path)
+    -- that means, if an entity sits on a cell that is part of its path, that most be the topmost one (so we can drop `ORDER BY steps ASC LIMIT 1`)
+    -- ergo, we can delete all such cells from all open paths, causing the entities to go for the next cell upon the next call of eff_follow_path.
     DELETE FROM 
-        pathfinding.complete_paths
+        pathfinding.complete_paths AS cp
+    USING 
+        environment.position_components AS pc
     WHERE 
-        id = (SELECT id FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1)
+        (cp.entity_id, cp.position_x, cp.position_y) = (pc.entity_id, pc.x, pc.y)
+        -- id = (SELECT id FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1)
     ;
+    -- idea: set deltas to next point. 
+    -- DELETE FROM 
+    --     pathfinding.complete_path
+    -- WHERE 
+    --     entity_id = _eid
+    --     AND -- position is same
 $$ LANGUAGE sql;--
 
 

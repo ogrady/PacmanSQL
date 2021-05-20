@@ -23,9 +23,13 @@ export class Environment extends db.DBUnit {
         return await this.get(`SELECT * FROM environment.entity_components`) as Entity[];
     }
 
-    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller: string = "ai"): Promise<number> {
+    private async createEntity(type: string, x: number, y: number, ẟx = 0, ẟy = 0, speed = 0.04, controller: string = "ai", dfa = ""): Promise<number> {
         console.log(`creating entity of type ${type} at (${x}, ${y}) with movement (${ẟx}, ${ẟy}),speed ${speed} and controller ${controller}`);
-        return (await this.func("environment.create_entity", [type, x, y, ẟx, ẟy, speed, db.str(controller)]))[0].create_entity;
+        const eid = (await this.func("environment.create_entity", [db.str(type), x, y, ẟx, ẟy, speed, db.str(controller)]))[0].create_entity;
+        if(dfa) {
+            this.func("dfa.setup_entity", [eid, db.str(dfa)]);
+        }
+        return eid;
     }
 
     public async destroyEntity(eid: number): Promise<void> {
@@ -37,11 +41,11 @@ export class Environment extends db.DBUnit {
     }
 
     public createPlayer(x: number, y: number, controller: string, ẟx = 0, ẟy = 0): Promise<number> {
-        return this.createEntity(db.str("pacman"), x, y, ẟx, ẟy, 0.04, controller);
+        return this.createEntity("pacman", x, y, ẟx, ẟy, 0.04, controller);
     }
 
-    public createGhost(x: number, y: number, ẟx = 0, ẟy = 0): Promise<number> {
-        return this.createEntity(db.str("ghost"), x, y, ẟx, ẟy);
+    public async createGhost(x: number, y: number, dfa = ""): Promise<number> {
+        return this.createEntity("ghost", x, y, 0, 0, 0.03, "ai", dfa);
     }
 
     private createMap(w: number, h: number): Promise<void> {
