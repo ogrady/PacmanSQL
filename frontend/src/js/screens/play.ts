@@ -29,7 +29,6 @@ class PlayScreen extends PacScreen {
     private blockSize: t.Dimensions;
     private map: any;
     private touchDirection: Direction;
-    private pacmanColours: string[];
 
     public constructor(canvasSize: t.Dimensions) {
         super();
@@ -38,18 +37,12 @@ class PlayScreen extends PacScreen {
         this.canvasSize = canvasSize;
         this.blockSize = [0,0];
         this.touchDirection = Direction.None;
-        this.pacmanColours = [...Array(10).keys()].map(_ => U.rgbToHex(U.randomColour())); // give us list comprehensions already!
-        console.log(this.pacmanColours);
     }
 
     private hashCoordinate(x: number, y: number): string {
         return `${x}|${y}`; // hurrr
     }
 
-
-    private eidToColour(eid: number): string {
-        return this.pacmanColours[eid%this.pacmanColours.length];
-    }
 
     public onload() {
         console.log("loading...")
@@ -103,7 +96,7 @@ class PlayScreen extends PacScreen {
             const [w, h] = this.blockSize;
             for(const e of entities) {
                 if(!(e.entity_id in this.entities)) {
-                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h], this.eidToColour(e.entity_id)) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
+                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h], U.rgbToHex([e.red, e.green, e.blue])) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
                     this.entities[e.entity_id] = dbentity;
                     me.game.world.addChild(dbentity);
                 } else {

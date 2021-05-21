@@ -41,7 +41,7 @@ export class Environment extends db.DBUnit {
     }
 
     public async createPlayer(x: number, y: number, controller: string): Promise<number> {
-        return (await this.func(`environment.create_player`, [x, y, db.str(controller)]))[0].id;
+        return (await this.func(`environment.create_player`, [x, y, db.str(controller)]))[0].create_player;
         //return this.createEntity("pacman", x, y, 30, 30, ẟx, ẟy, 0.04, controller);
     }
 

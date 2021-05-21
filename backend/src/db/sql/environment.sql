@@ -656,7 +656,7 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_player(_x INT, _y INT, _controller TEXT)
 RETURNS INT AS $$
-    SELECT environment.create_entity('pacman', _x, _y, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT)  
+    SELECT environment.create_entity('pacman', _x, _y, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
