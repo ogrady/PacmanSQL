@@ -62,7 +62,6 @@ export class WebServer {
             const size = await this.pacdb.environment.getMapDimensions();
             const shape = await this.pacdb.environment.getWallShapes();
             const contents = await this.pacdb.environment.getCellContents();
-            console.log({size: size, walls: shape, contents: contents});
             socket.emit("map", {size: size, walls: shape, contents: contents});
         });
 

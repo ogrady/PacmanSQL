@@ -91,15 +91,28 @@ INSERT INTO environment.item_types(name) (VALUES
 );--
 
 
-CREATE TABLE environment.entity_types(
-    id   SERIAL PRIMARY KEY,
-    name TEXT
+CREATE TABLE environment.entity_categories(
+    name TEXT PRIMARY KEY 
 );--
 
 
-INSERT INTO environment.entity_types(name) (VALUES
-    ('pacman'),
-    ('ghost')
+INSERT INTO environment.entity_categories(name) (VALUES
+    ('actor'),
+    ('item')
+);--
+
+
+CREATE TABLE environment.entity_types(
+    id   SERIAL PRIMARY KEY,
+    name TEXT,
+    category TEXT REFERENCES environment.entity_categories
+);--
+
+
+INSERT INTO environment.entity_types(name, category) (VALUES
+    ('pacman', 'actor'),
+    ('ghost', 'actor'),
+    ('pellet', 'item')
 );--
 
 
@@ -115,9 +128,9 @@ CREATE TABLE environment.cells(
     x        INT, 
     y        INT, 
     passable BOOLEAN, 
-    content  INT DEFAULT 1, -- pellet
-    UNIQUE(x, y),
-    FOREIGN KEY(content) REFERENCES environment.item_types(id)
+    -- content  INT DEFAULT 1, -- pellet
+    UNIQUE(x, y)
+    -- FOREIGN KEY(content) REFERENCES environment.item_types(id)
 );--
         
 
@@ -167,6 +180,7 @@ CREATE TABLE environment.position_components(
     entity_id   INT, 
     x           FLOAT, 
     y           FLOAT,
+    z           FLOAT DEFAULT 1,
     last_update TIMESTAMP,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
@@ -195,11 +209,12 @@ CREATE TABLE environment.controller_components(
 ---------------------------------------------------------------
 -- VIEWS
 ---------------------------------------------------------------
-CREATE VIEW environment.entity_components(entity_id, x, y, width, height, center_x, center_y, ẟx, ẟy, speed, type, red, green, blue) AS (
+CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, center_x, center_y, ẟx, ẟy, speed, type, category, red, green, blue) AS (
         SELECT 
             e.id,
             pc.x, 
             pc.y,
+            pc.z,
             ext.width,
             ext.height,
             pc.x + ext.width/2  AS center_x,
@@ -208,6 +223,7 @@ CREATE VIEW environment.entity_components(entity_id, x, y, width, height, center
             mc.ẟy,
             mc.speed,
             et.name,
+            et.category,
             col.red,
             col.green,
             col.blue
@@ -559,6 +575,8 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.update_positions()
 RETURNS TABLE(eid INT, x INT, y INT) AS $$
+    DELETE FROM environment.cleared_cells;
+
     WITH upd(entity_id, new_x, new_y) AS (
         SELECT 
             ec.entity_id,
@@ -583,40 +601,40 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
         pc.entity_id = upd.entity_id
     ;
 
-    INSERT INTO environment.cleared_cells(cell_id, x ,y)
-    WITH obp(entity_id, x, y) AS (
-        SELECT 
-            entity_id,
-            ROUND(x),
-            ROUND(y)
-        FROM 
-            environment.entity_components AS ec
-        WHERE 
-            type = 'pacman'
-    )
-    SELECT 
-        c.id,
-        c.x,
-        c.y
-    FROM 
-        environment.cells AS c 
-        JOIN obp
-          ON (c.x, c.y) = (obp.x, obp.y)
-    WHERE
-        content IS NOT NULL
-    ;
-
-    UPDATE environment.cells SET 
-        content = NULL 
-    WHERE 
-        id IN (SELECT cell_id FROM environment.cleared_cells)
-    ;
-
-
-    UPDATE environment.game_state SET 
-        score = score + (SELECT COUNT(cell_id) FROM environment.cleared_cells)
-    ;
-
+    --INSERT INTO environment.cleared_cells(cell_id, x ,y)
+    --WITH obp(entity_id, x, y) AS (
+    --    SELECT 
+    --        entity_id,
+    --        ROUND(x),
+    --        ROUND(y)
+    --    FROM 
+    --        environment.entity_components AS ec
+    --    WHERE 
+    --        type = 'pacman'
+    --)
+    --SELECT 
+    --    c.id,
+    --    c.x,
+    --    c.y
+    --FROM 
+    --    environment.cells AS c 
+    --    JOIN obp
+    --      ON (c.x, c.y) = (obp.x, obp.y)
+    --WHERE
+    --    content IS NOT NULL
+    --;
+--
+    --UPDATE environment.cells SET 
+    --    content = NULL 
+    --WHERE 
+    --    id IN (SELECT cell_id FROM environment.cleared_cells)
+    --;
+--
+--
+    --UPDATE environment.game_state SET 
+    --    score = score + (SELECT COUNT(cell_id) FROM environment.cleared_cells)
+    --;
+--
     SELECT 
         cell_id, 
         x, 
@@ -627,14 +645,14 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
 $$ LANGUAGE sql;--
 
 
-CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _width INT, _height INT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
+CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _z INT, _width INT, _height INT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
 RETURNS INT AS $$
     WITH 
     new_entity(eid) AS (
         INSERT INTO environment.entities(type) VALUES ('entity') RETURNING id
     ),
     pc AS (
-        INSERT INTO environment.position_components(entity_id, x, y) (VALUES ((SELECT eid FROM new_entity), _x, _y))
+        INSERT INTO environment.position_components(entity_id, x, y, z) (VALUES ((SELECT eid FROM new_entity), _x, _y, _z))
     ),
     mc AS (
         INSERT INTO environment.movement_components(entity_id, ẟx, ẟy, speed) (VALUES ((SELECT eid FROM new_entity), _ẟx, _ẟy, _speed))
@@ -656,15 +674,20 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_player(_x INT, _y INT, _controller TEXT)
 RETURNS INT AS $$
-    SELECT environment.create_entity('pacman', _x, _y, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
+    SELECT environment.create_entity('pacman', _x, _y, 1, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
 RETURNS INT AS $$
     WITH 
-    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 30, 30, 0, 0, 0.03, 'ai', _r, _g, _b)),
+    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 30, 30, 0, 0, 0.03, 'ai', _r, _g, _b)),
     dfa_setup(id) AS (SELECT dfa.setup_entity(entity.id, _dfa) FROM entity)
     SELECT id FROM entity
+$$ LANGUAGE sql;--
+
+CREATE FUNCTION environment.create_pellet(_x INT, _y INT)
+RETURNS INT AS $$
+    SELECT environment.create_entity('pellet', _x, _y, 0, 10, 10, 0, 0, 0.00, 'none', 255, 255, 255) AS id
 $$ LANGUAGE sql;--
 
 

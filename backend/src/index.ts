@@ -22,8 +22,11 @@ class PacmanGame extends g.Game {
     protected async update(delta: number) {
         this.pacdb.pathfinding.tickPathsearch();
         this.pacdb.dfa.tick();
-        this.pacdb.environment.updatePositions();
-        this.webserver.broadcast("entities", await this.pacdb.environment.getEntities());
+        const clearedCells = await this.pacdb.environment.updatePositions();
+        if(clearedCells.length > 0) {
+            this.webserver.broadcast("removed-cell-contents", {contents: clearedCells.map(([cid, x, y]) => [x,y])});
+        }
+        this.webserver.broadcast("actors", await this.pacdb.environment.getActors());
     }
 }
 

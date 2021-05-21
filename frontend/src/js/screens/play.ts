@@ -55,6 +55,15 @@ class PlayScreen extends PacScreen {
         me.input.bindKey(me.input.KEY.D, Direction.Right);
     }
 
+    private destroyEntity(eid: number) {
+        console.log(`destroying ${eid}`);
+        const e = this.entities[eid];
+        if(e !== undefined) {
+            me.game.world.removeChild(e);
+            delete this.entities[eid];
+        }
+    }
+
     public async onResetEvent() {
         //me.audio.play("bgm");
         console.log("Show play screen");
@@ -80,24 +89,28 @@ class PlayScreen extends PacScreen {
             }
 
             map.walls.map(wall => me.game.world.addChild(new fe.Wall(wall.coordinates.map(([x,y]) => [x * w, y * h]))));
-            map.contents.map(content => me.game.world.addChild(new fe.Pellet([content.x * w + w/2, content.y * h + h/2])));
-
+            for(const content of map.contents) {
+                const p = new fe.Pellet([content.x * w + w/2, content.y * h + h/2]);
+                this.pellets[this.hashCoordinate(content.x, content.y)] = p;
+                me.game.world.addChild(p);
+            }
         });
 
-        this.socket.on("self", entity => {
-            console.log("received self");
-            console.log(entity);
-        });
-
-        this.socket.on("spawn", entity => {
-            console.log("spawned", entity);
-        });
-
-        this.socket.on("entities", entities => {
+        const processEntities = (entities) => {
             const [w, h] = this.blockSize;
             for(const e of entities) {
                 if(!(e.entity_id in this.entities)) {
-                    const dbentity = e.type === "pacman" ? new fe.Pacman(e.entity_id, [e.x * w, e.y * h], U.rgbToHex([e.red, e.green, e.blue])) : new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff");
+                    let dbentity: fe.Pacman | fe.Ghost | fe.Pellet | null = null;
+                    if(e.type === "pacman") {
+                        dbentity = new fe.Pacman(e.entity_id, [e.x * w, e.y * h], U.rgbToHex([e.red, e.green, e.blue]));
+                    } else if(e.type === "ghost") {
+                        dbentity = new fe.Ghost(e.entity_id, [e.x * w, e.y * h], "#0000ff")
+                    } else if(e.type === "pellet") {
+                        dbentity = new fe.Pellet([e.x * w + w/2, e.y * h + h/2]);
+                    } else {
+                        console.error(`unknown entity type "${e.type}"`);
+                    }
+                    console.log(`adding ${e.type} at position (${e.x},${e.y})`);
                     this.entities[e.entity_id] = dbentity;
                     me.game.world.addChild(dbentity);
                 } else {
@@ -105,7 +118,24 @@ class PlayScreen extends PacScreen {
                     dbentity.setPosition(e.x * w, e.y * h);
                 }
             }
+        }
+
+        this.socket.on("entities", processEntities.bind(this));
+        this.socket.on("actors", processEntities.bind(this));
+
+        this.socket.on("removed-cell-contents", contents => {
+            for(const [x,y] of contents.contents) {
+                const hash = this.hashCoordinate(x,y);
+                const p = this.pellets[hash];
+                if(p !== undefined) {
+                    me.game.world.removeChild(this.pellets[hash]);
+                    delete this.pellets[hash];
+                }
+
+            }
         });
+
+        this.socket.on("destroy-entity", entity => this.destroyEntity(entity.id));
 
         await this.socket.emit("get-map");
         this.doKeyBinds();

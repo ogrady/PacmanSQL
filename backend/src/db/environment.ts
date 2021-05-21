@@ -20,7 +20,11 @@ export class Environment extends db.DBUnit {
     }
 
     public async getEntities(): Promise<Entity[]> {
-        return await this.get(`SELECT * FROM environment.entity_components`) as Entity[];
+        return await this.get(`SELECT * FROM environment.entity_components ORDER BY z ASC`) as Entity[];
+    }
+
+    public async getActors(): Promise<Entity[]> {
+        return await this.get(`SELECT * FROM environment.entity_components WHERE category = 'actor'`) as Entity[];
     }
 
     private async createEntity(type: string, x: number, y: number, width: number, height: number, {ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai", dfa = "", r = 100, g = 0, b = 100} = {}): Promise<number> {
@@ -56,7 +60,7 @@ export class Environment extends db.DBUnit {
     }
 
     public getCellContents(): Promise<any> {
-        return this.get(`SELECT c.x, c.y, i.name FROM environment.cells AS c JOIN environment.item_types AS i ON c.content = i.id`)
+        return this.get(`SELECT ec.x, ec.y, ec.type FROM environment.entity_components AS ec WHERE ec.category ='item'`)
     }
 
     public getConnectedComponents(): Promise<any> {
@@ -87,9 +91,22 @@ export class Environment extends db.DBUnit {
             throw new Error("either width or height of passed map is 0.");
         }
         await this.createMap(width, height);
+
         for(const [x,y] of blocked) {
-            this.run(`UPDATE environment.cells SET passable = FALSE, content = NULL WHERE (x,y) = (${x},${y})`);
+            await this.run(`UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
         }
+        this.run(`SELECT environment.create_pellet(c.x, c.y) FROM environment.cells AS c WHERE c.passable`);
+        this.run(`
+            DELETE FROM
+                environment.entities AS e
+            USING
+                environment.cells AS c,
+                environment.position_components AS pc
+            WHERE
+                e.id = pc.entity_id AND
+                (pc.x, pc.y) = (c.x, c.y) AND
+                NOT c.passable
+        `);
     }
 
     public async getBlockedAreas(): Promise<t.Coordinate[]>  {
@@ -108,8 +125,8 @@ export class Environment extends db.DBUnit {
         return this.func("environment.push", [playerId, x, y]);
     }
 
-    public updatePositions(): Promise<[number, number, number][]> {
-        return this.func("environment.update_positions", []);
+    public async updatePositions(): Promise<[number, number, number][]> {
+        return (await this.func("environment.update_positions", [])).map(row => row.update_positions);
     }
 
     public async getStates(): Promise<EntityState[]> {
