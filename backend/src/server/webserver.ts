@@ -34,6 +34,14 @@ export class WebServer {
         io.on("connection", this.initSocket.bind(this));
     }
 
+    private async sendMap(socket: socketio.Socket) {
+        console.log("requested map");
+        const size = await this.pacdb.environment.getMapDimensions();
+        const shape = await this.pacdb.environment.getWallShapes();
+        const contents = await this.pacdb.environment.getCellContents();
+        await socket.emit("map", {size: size, walls: shape, contents: contents});
+    }
+
     public async initSocket(socket: socketio.Socket): Promise<void> {
         console.log(`user ${socket.id} connected`);
 
@@ -44,11 +52,11 @@ export class WebServer {
 
         // bindings
         socket.on("disconnect", async reason => {
-          console.log(`disconnecting user ${socket.id}: ${reason}`);
-          const eid = await this.pacdb.environment.destroyPlayer(socket.id);
-          delete this.clients[socket.id];
-          console.log(eid);
-          this.broadcast("destroy-entity", {id: eid});
+            console.log(`disconnecting user ${socket.id}: ${reason}`);
+            const eid = await this.pacdb.environment.destroyPlayer(socket.id);
+            delete this.clients[socket.id];
+            console.log(eid);
+            this.broadcast("destroy-entity", {id: eid});
         });
 
         socket.on("move", data => {
@@ -57,15 +65,10 @@ export class WebServer {
             this.pacdb.environment.setPlayerMovement(this.clients[socket.id].entityId, x, y);
         });
 
-        socket.on("get-map", async () => {
-            console.log("requested map");
-            const size = await this.pacdb.environment.getMapDimensions();
-            const shape = await this.pacdb.environment.getWallShapes();
-            const contents = await this.pacdb.environment.getCellContents();
-            socket.emit("map", {size: size, walls: shape, contents: contents});
-        });
+        socket.on("get-map", async () => this.sendMap(socket));
 
         socket.emit("self", {id: playerId});
+        await this.sendMap(socket);
         socket.emit("entities", await this.pacdb.environment.getEntities());
     }
 

@@ -128,9 +128,7 @@ CREATE TABLE environment.cells(
     x        INT, 
     y        INT, 
     passable BOOLEAN, 
-    -- content  INT DEFAULT 1, -- pellet
     UNIQUE(x, y)
-    -- FOREIGN KEY(content) REFERENCES environment.item_types(id)
 );--
         
 

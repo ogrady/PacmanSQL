@@ -164,12 +164,10 @@ export class Pacman extends DBEntity {
 export class Pellet extends me.Renderable {
     public constructor(coordinate: t.Coordinate,
                        colour: string = "#fff",
-                       radius: number = 7,
-                       z: number = 1000)
+                       radius: number = 7)
     {
         super(coordinate[0], coordinate[1], radius, radius);
         this.colour = colour;
-        this.z = z;
     }
 
     public draw(renderer: any) {

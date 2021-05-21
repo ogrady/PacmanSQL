@@ -7,8 +7,6 @@ import * as ws from "./server/webserver";
 import * as g from "./game";
 
 
-let ghostid = 0;
-
 class PacmanGame extends g.Game {
     private pacdb: db.PacmanDB;
     private webserver: ws.WebServer;
@@ -24,7 +22,7 @@ class PacmanGame extends g.Game {
         this.pacdb.dfa.tick();
         const clearedCells = await this.pacdb.environment.updatePositions();
         if(clearedCells.length > 0) {
-            this.webserver.broadcast("removed-cell-contents", {contents: clearedCells.map(([cid, x, y]) => [x,y])});
+            this.webserver.broadcast("removed-cell-contents", {contents: clearedCells.map(([cid, x, y]) => cid)});
         }
         this.webserver.broadcast("actors", await this.pacdb.environment.getActors());
     }
@@ -36,12 +34,8 @@ async function main() {
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
-    ghostid = await pacdb.environment.createGhost(1,1, "aggressive");
-    /*await pacdb.environment.exec(`insert into dfa.entity_states(entity_id, dfa_id, state_id) (values
-        (1,
-        (select dfa_id from dfa.edges where current_state = (select id from dfa.states where name='turning') limit 1),
-        (select id from dfa.states where name='turning')))`);
-*/
+    await pacdb.environment.createGhost(1,1, "aggressive");
+
     const webserver = new ws.WebServer(pacdb);
     const game = new PacmanGame(pacdb, webserver);
 
