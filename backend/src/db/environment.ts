@@ -55,6 +55,10 @@ export class Environment extends db.DBUnit {
         return this.func("environment.create_map", [w, h]);
     }
 
+    public getCellContents(): Promise<any> {
+        return this.get(`SELECT c.x, c.y, i.name FROM environment.cells AS c JOIN environment.item_types AS i ON c.content = i.id`)
+    }
+
     public getConnectedComponents(): Promise<any> {
         return this.exec(`SELECT * FROM environment.connected_components`);
     }
@@ -84,7 +88,7 @@ export class Environment extends db.DBUnit {
         }
         await this.createMap(width, height);
         for(const [x,y] of blocked) {
-            this.run(`UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
+            this.run(`UPDATE environment.cells SET passable = FALSE, content = NULL WHERE (x,y) = (${x},${y})`);
         }
     }
 

@@ -57,13 +57,13 @@ export class WebServer {
             this.pacdb.environment.setPlayerMovement(this.clients[socket.id].entityId, x, y);
         });
 
-        socket.on("map", async () => {
+        socket.on("get-map", async () => {
             console.log("requested map");
             const size = await this.pacdb.environment.getMapDimensions();
-            const blocked = await this.pacdb.environment.getBlockedAreas();
             const shape = await this.pacdb.environment.getWallShapes();
-            console.log(shape);
-            socket.emit("map", {size: size, walls: shape});
+            const contents = await this.pacdb.environment.getCellContents();
+            console.log({size: size, walls: shape, contents: contents});
+            socket.emit("map", {size: size, walls: shape, contents: contents});
         });
 
         socket.emit("self", {id: playerId});

@@ -57,7 +57,7 @@ class PlayScreen extends PacScreen {
 
     public async onResetEvent() {
         //me.audio.play("bgm");
-        console.log("Show play screen", this);
+        console.log("Show play screen");
         const that = this;
 
         bs.Bootstrap.getInstance().on("touch-up",   () => that.touchDirection = Direction.Up);
@@ -80,6 +80,7 @@ class PlayScreen extends PacScreen {
             }
 
             map.walls.map(wall => me.game.world.addChild(new fe.Wall(wall.coordinates.map(([x,y]) => [x * w, y * h]))));
+            map.contents.map(content => me.game.world.addChild(new fe.Pellet([content.x * w + w/2, content.y * h + h/2])));
 
         });
 
@@ -106,7 +107,7 @@ class PlayScreen extends PacScreen {
             }
         });
 
-        await this.socket.emit("map");
+        await this.socket.emit("get-map");
         this.doKeyBinds();
     }
 
