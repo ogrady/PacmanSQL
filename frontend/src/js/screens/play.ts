@@ -67,16 +67,17 @@ class PlayScreen extends PacScreen {
         for(const e of entities) {
             if(!(e.entity_id in this.entities)) {
                 let dbentity: fe.Pacman | fe.Ghost | fe.Pellet | null = null;
+                const colour = U.rgbToHex([e.red, e.green, e.blue]);
                 if(e.type === "pacman") {
-                    dbentity = new fe.Pacman(e.entity_id, [e.x * w, e.y * h], U.rgbToHex([e.red, e.green, e.blue]));
+                    dbentity = new fe.Pacman(e.entity_id, [Math.floor(e.x * w), Math.floor(e.y * h)], colour);
                 } else if(e.type === "ghost") {
-                    dbentity = new fe.Ghost(e.entity_id, [e.x * w, e.y * h], U.rgbToHex([e.red, e.green, e.blue]));
+                    dbentity = new fe.Ghost(e.entity_id, [e.x * w, e.y * h], colour);
                 } else if(e.type === "pellet") {
-                    dbentity = new fe.Pellet([e.x * w + w/2, e.y * h + h/2], U.rgbToHex([e.red, e.green, e.blue])); //new fe.Pellet([e.x * w , e.y * h ], U.rgbToHex([e.red, e.green, e.blue]));
+                    dbentity = new fe.Pellet([e.x * w + w/2, e.y * h + h/2], colour);
                 } else {
                     console.error(`unknown entity type "${e.type}"`);
                 }
-                console.log(`adding ${e.type} at position (${e.x},${e.y})`);
+                console.log(`adding ${e.type} at position (${e.x},${e.y}), that is (${Math.floor(e.x * w)},${Math.floor(e.y * h)})`);
                 this.entities[e.entity_id] = dbentity;
                 me.game.world.addChild(dbentity, e.z);
             } else {
@@ -115,7 +116,7 @@ class PlayScreen extends PacScreen {
         });
 
         this.socket.on("entities", this.processEntities.bind(this));
-        this.socket.on("entity-updates",   this.processEntities.bind(this));
+        this.socket.on("entity-updates", this.processEntities.bind(this));
 
         this.socket.on("removed-cell-contents", items => items.contents.map(eid => this.destroyEntity(eid)));
 

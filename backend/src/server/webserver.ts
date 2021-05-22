@@ -48,7 +48,7 @@ export class WebServer {
         // create player
         const playerId = await this.pacdb.environment.createPlayer(3,4, socket.id);
         // fixme: network component in DB
-        this.clients[socket.id] = {socket: socket, entityId: playerId};
+
 
         // bindings
         socket.on("disconnect", async reason => {
@@ -70,6 +70,9 @@ export class WebServer {
         socket.emit("self", {id: playerId});
         await this.sendMap(socket);
         socket.emit("entities", await this.pacdb.environment.getEntities());
+
+        // add to clients lastly to avoid overrunning the client with events before it is set up properly
+        this.clients[socket.id] = {socket: socket, entityId: playerId};
     }
 
     public broadcast(type: string, message: any) {

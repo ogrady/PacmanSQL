@@ -128,7 +128,7 @@ export class Pacman extends DBEntity {
     private accu = 0;
 
     public constructor(dbId: number, position: t.Coordinate, colour = "#f5e642") {
-        super(dbId, position[0], position[1], {width: 46, height: 46});
+        super(dbId, position[0], position[1], {width: 32, height: 32});
 
         this.renderable = new me.Sprite(position[0], position[1], {
             image: "pacman",
@@ -173,6 +173,12 @@ export class Pellet extends me.Renderable {
     public draw(renderer: any) {
         renderer.setColor(this.colour);
         renderer.fillEllipse(this.pos.x, this.pos.y, this.width, this.width);
+    }
+
+    // can be removed once removing pellets works properly
+    public setPosition(x: number, y: number): void {
+        this.pos.x = x;
+        this.pos.y = y;
     }
 }
 
