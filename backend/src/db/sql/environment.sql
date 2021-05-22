@@ -2,11 +2,11 @@ DROP SCHEMA IF EXISTS environment CASCADE;
 CREATE SCHEMA environment;
 
 -- https://stackoverflow.com/a/1036010
--- CREATE OR REPLACE FUNCTION update_last_update_column()
--- RETURNS TRIGGER AS $$ BEGIN
---    NEW.last_update = now(); 
---    RETURN NEW;
--- END $$ LANGUAGE PLPGSQL;--
+CREATE OR REPLACE FUNCTION update_last_update_column()
+RETURNS TRIGGER AS $$ BEGIN
+   NEW.last_update = now(); 
+   RETURN NEW;
+END $$ LANGUAGE PLPGSQL;--
 
 CREATE OR REPLACE FUNCTION the_func(acc anyelement, x anyelement) 
 RETURNS anyelement AS $$ BEGIN
@@ -147,13 +147,9 @@ CREATE TABLE environment.type_components(
     FOREIGN KEY(type) REFERENCES environment.entity_types(id) ON DELETE CASCADE
 );--
 
---CREATE TRIGGER update_type_components_timestamp AFTER UPDATE
---    ON environment.type_components FOR EACH ROW EXECUTE PROCEDURE 
---    update_last_update_column()
---;--
 
-
--- components
+-- components 
+-- TRIGGERS ARE GENERATED AUTOMATICALLY!
 CREATE TABLE environment.extent_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
@@ -176,31 +172,18 @@ CREATE TABLE environment.colour_components(
 CREATE TABLE environment.position_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
-    x           FLOAT, 
-    y           FLOAT,
-    z           FLOAT DEFAULT 1,
+    x           FLOAT, -- WATCHED
+    y           FLOAT, -- WATCHED
+    z           FLOAT DEFAULT 1, 
     last_update TIMESTAMP,
-    -- grid_x      INT,
-    -- grid_y      INT,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
-
--- CREATE OR REPLACE FUNCTION environment.update_grid_coordinates()
--- RETURNS TRIGGER AS $$ BEGIN
---     UPDATE environment.position_components
---       SET grid_x = FLOOR(x / (SELECT MAX(x) FROM environment.cells)),
---           grid_y = FLOOR(y / (SELECT MAX(y) FROM environment.cells));
---     RETURN NEW;
--- END; $$ LANGUAGE plpgsql;--
--- 
--- CREATE TRIGGER foo AFTER UPDATE OF x,y ON environment.position_components EXECUTE PROCEDURE environment.update_grid_coordinates();
-
 
 CREATE TABLE environment.movement_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
-    ẟx          FLOAT, 
-    ẟy          FLOAT,
+    ẟx          FLOAT, -- WATCHED
+    ẟy          FLOAT, -- WATCHED
     speed       FLOAT,
     last_update TIMESTAMP,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
@@ -787,6 +770,7 @@ RETURNS VOID AS $$
         CASE ec1.type || '_' || ec2.type 
         WHEN 'pacman_ghost' THEN environment.coll_pacman_ghost(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
+        WHEN 'pellet_pacman' THEN environment.coll_pacman_pellet(_eid2, _eid1)
         END
     FROM 
         environment.entity_components AS ec1,

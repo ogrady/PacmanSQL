@@ -57,14 +57,39 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
         this.tables = [];
     }
 
+    private generateWatchTriggerStatement(namespace: string, tableName: string, columns: string[]): [string, string] {
+        const name = `update_${tableName}_timestamp`;
+        const schemaAndName = `${namespace}.${tableName}`;
+        return [`DROP TRIGGER IF EXISTS ${name} ON ${schemaAndName}`,
+                `CREATE TRIGGER ${name} BEFORE UPDATE OF ${columns.join(",")}
+                    ON ${schemaAndName}
+                    FOR EACH ROW
+                    WHEN ((${columns.map(c => "OLD." + c).join(",")}) IS DISTINCT FROM (${columns.map(c => "NEW." + c).join(",")}))
+                    EXECUTE PROCEDURE update_last_update_column()
+                ;`];
+    }
+
     public async init(): Promise<void> {
         const data: string = fs.readFileSync(this.sqlfile, "utf8");
         const stmts: string[] = data.split(";--");
         for(let i = 0; i < stmts.length; i++) {
             await this.run(stmts[i]);
-            this.tables = this.tables.concat([...stmts[i]
-                       .matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
-                       .map(m => m[1])); // table names
+            const tableNames = [...stmts[i]
+                                .matchAll(/CREATE TABLE.* ([^\s]*)\s?\(/gm)]
+                                .map(m => m[1]);
+            if(tableNames.length > 0) { // statement is a CREATE TABLE STATEMENT
+                const watchedColumns = [...stmts[i].matchAll(/^\s+([^\s]+)\s.* -- WATCHED/gm)].map(m => m[1]);
+                if(watchedColumns.length > 0) {
+                    const tokens = tableNames[0].split(".");
+                    const namespace = tokens.length > 1 ? tokens[0] : "";
+                    const tableName = tokens.length > 1 ? tokens[1] : tokens[0];
+                    console.log(this.generateWatchTriggerStatement(namespace, tableName, watchedColumns));
+                    const [drop, create] = this.generateWatchTriggerStatement(namespace, tableName, watchedColumns);
+                    await this.run(drop);
+                    await this.run(create);
+                }
+            }
+            this.tables = this.tables.concat(tableNames);
         }
         console.log(`intialised tables: [${this.tables.join(", ")}]`);
     }
