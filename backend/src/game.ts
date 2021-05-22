@@ -3,6 +3,7 @@ export abstract class Game {
     private tickDelay: number;
     private refreshIntervalId: NodeJS.Timeout | undefined;
     private lastTick: number | undefined; // FIXME: use.
+    private busy: boolean;
 
     public isRunning(): boolean {
         return this.refreshIntervalId !== undefined;
@@ -10,6 +11,7 @@ export abstract class Game {
 
     public constructor(tickDelay: number = 33) { //targetFrames: number = 30) { // tickDelay: number = 33
         this.running = false;
+        this.busy = false;
         this.tickDelay = tickDelay; //1000 / targetFrames;
     }
 
@@ -26,11 +28,16 @@ export abstract class Game {
         }
     }
 
-    private tick() {
-        const now = Date.now();
-        const delta = now - (this.lastTick ?? now);
-        this.update(delta);
-        this.lastTick = now;
+    private async tick() {
+        if(!this.busy) {
+            this.busy = true;
+            const now = Date.now();
+            const delta = now - (this.lastTick ?? now);
+            await this.update(delta);
+            this.lastTick = now;
+            this.busy = false;
+        }
+
     }
 
     protected abstract update(delta: number);

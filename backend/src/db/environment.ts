@@ -129,6 +129,10 @@ export class Environment extends db.DBUnit {
         return (await this.func("environment.update_positions", [])).map(row => row.update_positions);
     }
 
+    public async handleCollisions(): Promise<void> {
+        return await this.exec("SELECT environment.dispatch_collision_handler(eid1, eid2) FROM environment.collisions");
+    }
+
     public async getStates(): Promise<EntityState[]> {
         return this.get(`SELECT entity_id, x, y, ẟx, ẟy FROM environment.entity_components`);
     }

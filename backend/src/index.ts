@@ -19,8 +19,9 @@ class PacmanGame extends g.Game {
 
     protected async update(delta: number) {
         this.pacdb.pathfinding.tickPathsearch();
-        this.pacdb.dfa.tick();
+        //await this.pacdb.dfa.tick();
         const clearedCells = await this.pacdb.environment.updatePositions();
+        this.pacdb.environment.handleCollisions();
         if(clearedCells.length > 0) {
             this.webserver.broadcast("removed-cell-contents", {contents: clearedCells.map(([cid, x, y]) => cid)});
         }

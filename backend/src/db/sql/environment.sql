@@ -157,8 +157,8 @@ CREATE TABLE environment.type_components(
 CREATE TABLE environment.extent_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
-    width       INT,
-    height      INT,
+    width       FLOAT,
+    height      FLOAT,
     last_update TIMESTAMP,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
@@ -180,8 +180,20 @@ CREATE TABLE environment.position_components(
     y           FLOAT,
     z           FLOAT DEFAULT 1,
     last_update TIMESTAMP,
+    -- grid_x      INT,
+    -- grid_y      INT,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
+
+-- CREATE OR REPLACE FUNCTION environment.update_grid_coordinates()
+-- RETURNS TRIGGER AS $$ BEGIN
+--     UPDATE environment.position_components
+--       SET grid_x = FLOOR(x / (SELECT MAX(x) FROM environment.cells)),
+--           grid_y = FLOOR(y / (SELECT MAX(y) FROM environment.cells));
+--     RETURN NEW;
+-- END; $$ LANGUAGE plpgsql;--
+-- 
+-- CREATE TRIGGER foo AFTER UPDATE OF x,y ON environment.position_components EXECUTE PROCEDURE environment.update_grid_coordinates();
 
 
 CREATE TABLE environment.movement_components(
@@ -545,6 +557,31 @@ CREATE VIEW environment.visual_map(content) AS (
         y
 );--
 
+
+CREATE VIEW environment.collisions(eid1, eid2) AS (
+    SELECT 
+        ec1.entity_id,
+        ec2.entity_id
+    FROM 
+        environment.entity_components AS ec1
+        JOIN environment.entity_components AS ec2
+          ON BOX(POINT(ec1.x, ec1.y),POINT(ec1.x + ec1.width, ec1.y + ec1.height)) && BOX(POINT(ec2.x, ec2.y),POINT(ec2.x + ec2.width, ec2.y + ec2.height))
+          AND ec1.entity_id < ec2.entity_id -- <> removes collisions with self, < removes duplicate collisions
+    --SELECT 
+    --    pc1.entity_id,
+    --    pc2.entity_id
+    --FROM 
+    --    environment.position_components AS pc1 
+    --    JOIN environment.extent_components AS ec1 
+    --      ON pc1.entity_id = ec1.entity_id,
+    --    environment.position_components AS pc2
+    --    JOIN environment.extent_components AS ec2
+    --      ON pc2.entity_id = ec2.entity_id
+    --WHERE 
+    --    BOX(POINT(pc1.x, pc1.y),POINT(pc1.x + ec1.width, pc1.y + ec1.height)) && BOX(POINT(pc2.x, pc2.y),POINT(pc2.x + ec2.width, pc2.y + ec2.height))
+    --    AND pc1.entity_id < pc2.entity_id 
+);--
+
 ---------------------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------------------
@@ -643,7 +680,7 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
 $$ LANGUAGE sql;--
 
 
-CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _z INT, _width INT, _height INT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
+CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _z INT, _width FLOAT, _height FLOAT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
 RETURNS INT AS $$
     WITH 
     new_entity(eid) AS (
@@ -670,24 +707,29 @@ RETURNS INT AS $$
     SELECT eid FROM new_entity    
 $$ LANGUAGE sql;--
 
+
 CREATE FUNCTION environment.create_player(_x INT, _y INT, _controller TEXT)
 RETURNS INT AS $$
-    SELECT environment.create_entity('pacman', _x, _y, 1, 30, 30, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
+    SELECT environment.create_entity('pacman', _x, _y, 1, 0.5, 0.5, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
 $$ LANGUAGE sql;--
+
+
+-- stub
+CREATE OR REPLACE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) RETURNS VOID AS $$ SELECT 1 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
 RETURNS INT AS $$
     WITH 
-    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 30, 30, 0, 0, 0.03, 'ai', _r, _g, _b)),
+    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 0.5, 0.5, 0, 0, 0.03, 'ai', _r, _g, _b)),
     dfa_setup(id) AS (SELECT dfa.setup_entity(entity.id, _dfa) FROM entity)
     SELECT id FROM entity
 $$ LANGUAGE sql;--
 
+
 CREATE FUNCTION environment.create_pellet(_x INT, _y INT)
 RETURNS INT AS $$
-    SELECT environment.create_entity('pellet', _x, _y, 0, 10, 10, 0, 0, 0.00, 'none', 255, 255, 255) AS id
+    SELECT environment.create_entity('pellet', _x, _y, 0, 0.3, 0.3, 0, 0, 0.00, 'none', 255, 255, 255) AS id
 $$ LANGUAGE sql;--
-
 
 
 CREATE FUNCTION environment.create_map(_w INT, _h INT)
@@ -715,12 +757,53 @@ RETURNS VOID AS $$
 $$ LANGUAGE sql;--
 
 
+CREATE TABLE environment.collision_handlers(
+    id    SERIAL PRIMARY KEY,
+    type1 INT,
+    type2 INT,
+    fname TEXT
+);
+
+CREATE FUNCTION environment.coll_pacman_ghost(_eid1 INT, _eid2 INT)
+RETURNS VOID AS $$
+    UPDATE environment.position_components SET 
+        x = -42
+    WHERE 
+        entity_id = _eid1
+$$ LANGUAGE sql;--
+
+CREATE FUNCTION environment.coll_pacman_pellet(_eid1 INT, _eid2 INT)
+RETURNS VOID AS $$
+    UPDATE environment.position_components SET 
+        x = -10,
+        y = -10
+    WHERE 
+        entity_id = _eid2
+$$ LANGUAGE sql;--
+
+CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _eid2 INT)
+RETURNS VOID AS $$
+    SELECT
+        CASE ec1.type || '_' || ec2.type 
+        WHEN 'pacman_ghost' THEN environment.coll_pacman_ghost(_eid1, _eid2)
+        WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
+        END
+    FROM 
+        environment.entity_components AS ec1,
+        environment.entity_components AS ec2
+    WHERE 
+        ec1.entity_id = _eid1
+        AND ec2.entity_id = _eid2
+$$ LANGUAGE sql;--
 
 
+;
 
+--select environment.dispatch_collision_handler(52, 7);
+--select * from environment.entity_components
 
-
-
+--
+explain analyze select * from environment.collisions
 
 
 -- SELECT environment.create_map(11, 10);-------------

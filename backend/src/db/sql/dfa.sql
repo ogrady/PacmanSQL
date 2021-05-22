@@ -116,7 +116,7 @@ CREATE VIEW dfa.overview AS (
 ---------------------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------------------
-CREATE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) --_dfaid INT)
+CREATE OR REPLACE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) --_dfaid INT)
 RETURNS VOID AS $$
     INSERT INTO dfa.entity_states(entity_id, dfa_id, state_id) VALUES(
         _eid,

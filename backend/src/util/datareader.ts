@@ -67,3 +67,21 @@ export async function readDFAs(pacdb: db.PacmanDB, file: string): Promise<void> 
 export async function readMap(pacdb: db.PacmanDB, file: string): Promise<void> {
     await pacdb.environment.setMap(fs.readFileSync(file, "utf8"));
 }
+
+export async function readGameData(pacdb: db.PacmanDB, file: string): Promise<void> {
+    await pacdb.environment.setMap(fs.readFileSync(file, "utf8"));
+}
+
+/*
+        // effects
+        const effects: string[] = (await this.exec("SELECT fname FROM dfa.effects")).rows
+                                        .map(row => `WHEN '${row.fname}' THEN dfa.${row.fname}(_eid)`);
+        await this.exec(`
+            CREATE OR REPLACE FUNCTION dfa.dispatch_effect(_eid INT, _fname TEXT)
+            RETURNS VOID AS $$
+                SELECT CASE _fname
+                    ${effects.join("\n")}
+                END;
+            $$ LANGUAGE sql;`);
+    }
+*/
