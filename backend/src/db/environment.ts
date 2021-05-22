@@ -23,8 +23,16 @@ export class Environment extends db.DBUnit {
         return await this.get(`SELECT * FROM environment.entity_components ORDER BY z ASC`) as Entity[];
     }
 
+    public async getEntityDelta(): Promise<Entity[]> {
+        return await this.get(`SELECT ec.* FROM environment.entity_components AS ec JOIN environment.game_state AS gs ON ec.last_update >= gs.checkpoint`);
+    }
+
     public async getActors(): Promise<Entity[]> {
         return await this.get(`SELECT * FROM environment.entity_components WHERE category = 'actor'`) as Entity[];
+    }
+
+    public async checkpoint(): Promise<void> {
+        return this.exec("UPDATE environment.game_state SET checkpoint = now()");
     }
 
     private async createEntity(type: string, x: number, y: number, width: number, height: number, {ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai", dfa = "", r = 100, g = 0, b = 100} = {}): Promise<number> {

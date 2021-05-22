@@ -18,14 +18,15 @@ class PacmanGame extends g.Game {
     }
 
     protected async update(delta: number) {
+        await this.pacdb.environment.checkpoint();
         this.pacdb.pathfinding.tickPathsearch();
-        //await this.pacdb.dfa.tick();
+        await this.pacdb.dfa.tick();
         const clearedCells = await this.pacdb.environment.updatePositions();
-        this.pacdb.environment.handleCollisions();
-        if(clearedCells.length > 0) {
-            this.webserver.broadcast("removed-cell-contents", {contents: clearedCells.map(([cid, x, y]) => cid)});
+        await this.pacdb.environment.handleCollisions();
+        const updates = await this.pacdb.environment.getEntityDelta();
+        if(updates.length > 0) {
+            this.webserver.broadcast("entity-updates", updates);
         }
-        this.webserver.broadcast("actors", await this.pacdb.environment.getActors());
     }
 }
 

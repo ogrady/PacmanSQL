@@ -103,8 +103,8 @@ INSERT INTO environment.entity_categories(name) (VALUES
 
 
 CREATE TABLE environment.entity_types(
-    id   SERIAL PRIMARY KEY,
-    name TEXT,
+    id       SERIAL PRIMARY KEY,
+    name     TEXT,
     category TEXT REFERENCES environment.entity_categories
 );--
 
@@ -119,8 +119,10 @@ INSERT INTO environment.entity_types(name, category) (VALUES
 CREATE TABLE environment.game_state(
     id    SERIAL PRIMARY KEY,
     level INT,
-    score INT
+    checkpoint TIMESTAMP
 );--
+
+INSERT INTO environment.game_state(level, checkpoint) (VALUES (1, now()));--
 
 
 CREATE TABLE environment.cells(
@@ -202,7 +204,7 @@ CREATE TABLE environment.controller_components(
 ---------------------------------------------------------------
 -- VIEWS
 ---------------------------------------------------------------
-CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, center_x, center_y, ẟx, ẟy, speed, type, category, red, green, blue) AS (
+CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, center_x, center_y, ẟx, ẟy, speed, type, category, red, green, blue, last_update) AS (
         SELECT 
             e.id,
             pc.x, 
@@ -219,7 +221,8 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
             et.category,
             col.red,
             col.green,
-            col.blue
+            col.blue,
+            GREATEST(pc.last_update, mc.last_update, tc.last_update, ext.last_update, col.last_update)
         FROM 
             environment.entities AS e 
             LEFT JOIN environment.position_components AS pc 

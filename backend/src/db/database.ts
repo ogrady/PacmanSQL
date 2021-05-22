@@ -83,10 +83,10 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
                     const tokens = tableNames[0].split(".");
                     const namespace = tokens.length > 1 ? tokens[0] : "";
                     const tableName = tokens.length > 1 ? tokens[1] : tokens[0];
-                    console.log(this.generateWatchTriggerStatement(namespace, tableName, watchedColumns));
                     const [drop, create] = this.generateWatchTriggerStatement(namespace, tableName, watchedColumns);
                     await this.run(drop);
                     await this.run(create);
+                    console.log(`generated a WATCH trigger on ${namespace}.${tableName}(${watchedColumns.join(",")})`);
                 }
             }
             this.tables = this.tables.concat(tableNames);

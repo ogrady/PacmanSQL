@@ -115,7 +115,7 @@ class PlayScreen extends PacScreen {
         });
 
         this.socket.on("entities", this.processEntities.bind(this));
-        this.socket.on("actors",   this.processEntities.bind(this));
+        this.socket.on("entity-updates",   this.processEntities.bind(this));
 
         this.socket.on("removed-cell-contents", items => items.contents.map(eid => this.destroyEntity(eid)));
 
