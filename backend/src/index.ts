@@ -11,8 +11,8 @@ class PacmanGame extends g.Game {
     private pacdb: db.PacmanDB;
     private webserver: ws.WebServer;
 
-    public constructor(pacdb: db.PacmanDB, webserver: ws.WebServer) {
-        super();
+    public constructor(pacdb: db.PacmanDB, webserver: ws.WebServer, tickDelay: number) {
+        super(tickDelay);
         this.pacdb = pacdb;
         this.webserver = webserver;
     }
@@ -36,10 +36,10 @@ async function main() {
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
-    await pacdb.environment.createGhost(1,1, "aggressive");
+    await pacdb.environment.createGhost(1,1, "wandering"); //"aggressive");
 
     const webserver = new ws.WebServer(pacdb);
-    const game = new PacmanGame(pacdb, webserver);
+    const game = new PacmanGame(pacdb, webserver, 50);
 
     webserver.start();
     game.start();

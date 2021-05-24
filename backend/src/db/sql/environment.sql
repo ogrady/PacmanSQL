@@ -1,5 +1,5 @@
 DROP SCHEMA IF EXISTS environment CASCADE;
-CREATE SCHEMA environment;
+CREATE SCHEMA environment;--
 
 -- https://stackoverflow.com/a/1036010
 CREATE OR REPLACE FUNCTION update_last_update_column()
@@ -144,9 +144,9 @@ CREATE TABLE environment.entities(
 CREATE TABLE environment.type_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT,
-    type        INT,
+    type_id     INT,
     last_update TIMESTAMP,
-    FOREIGN KEY(type) REFERENCES environment.entity_types(id) ON DELETE CASCADE
+    FOREIGN KEY(type_id) REFERENCES environment.entity_types(id) ON DELETE CASCADE
 );--
 
 
@@ -232,7 +232,7 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
             LEFT JOIN environment.type_components AS tc 
               ON tc.entity_id = e.id
             LEFT JOIN environment.entity_types AS et 
-              ON tc.type = et.id
+              ON tc.type_id = et.id
             LEFT JOIN environment.extent_components AS ext
               ON ext.entity_id = e.id
             LEFT JOIN environment.colour_components AS col 
@@ -679,7 +679,7 @@ RETURNS INT AS $$
         INSERT INTO environment.movement_components(entity_id, ẟx, ẟy, speed) (VALUES ((SELECT eid FROM new_entity), _ẟx, _ẟy, _speed))
     ),
     tc AS (
-        INSERT INTO environment.type_components(entity_id, type) (VALUES ((SELECT eid FROM new_entity), (SELECT id FROM environment.entity_types WHERE name = _type)))
+        INSERT INTO environment.type_components(entity_id, type_id) (VALUES ((SELECT eid FROM new_entity), (SELECT id FROM environment.entity_types WHERE name = _type)))
     ),
     cc AS (
         INSERT INTO environment.controller_components(entity_id, controller) (VALUES ((SELECT eid FROM new_entity), _controller))
@@ -701,6 +701,7 @@ $$ LANGUAGE sql;--
 
 
 -- stub
+CREATE SCHEMA IF NOT EXISTS dfa;
 CREATE OR REPLACE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) RETURNS VOID AS $$ SELECT 1 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
@@ -770,14 +771,18 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     SELECT
-        CASE ec1.type || '_' || ec2.type 
+        CASE et1.name || '_' || et2.name
         WHEN 'pacman_ghost' THEN environment.coll_pacman_ghost(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
         WHEN 'pellet_pacman' THEN environment.coll_pacman_pellet(_eid2, _eid1)
         END
     FROM 
-        environment.entity_components AS ec1,
-        environment.entity_components AS ec2
+        environment.type_components AS ec1
+        JOIN environment.entity_types AS et1
+          ON ec1.type_id = et1.id,
+        environment.type_components AS ec2
+        JOIN environment.entity_types AS et2
+          ON ec2.type_id = et2.id
     WHERE 
         ec1.entity_id = _eid1
         AND ec2.entity_id = _eid2

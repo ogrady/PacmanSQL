@@ -65,16 +65,17 @@ class PlayScreen extends PacScreen {
     private processEntities(entities) {
         const [w, h] = this.blockSize;
         for(const e of entities) {
+            const pos = [e.x * w + w/2, e.y * h + h/2] as t.Coordinate;
             if(!(e.entity_id in this.entities)) {
                 let dbentity: fe.Pacman | fe.Ghost | fe.Pellet | null = null;
                 const colour = U.rgbToHex([e.red, e.green, e.blue]);
                 if(e.type === "pacman") {
-                    dbentity = new fe.Pacman(e.entity_id, [e.x, e.y], [w/100, h/100], colour); //[Math.floor(e.x * w), Math.floor(e.y * h)], colour);
+                    dbentity = new fe.Pacman(e.entity_id, pos, colour); //[Math.floor(e.x * w), Math.floor(e.y * h)], colour);
                     console.log(e.x,e.y,w,h,e.z);
                 } else if(e.type === "ghost") {
-                    dbentity = new fe.Ghost(e.entity_id, [e.x, e.y], [w/2, h/2], colour);
+                    dbentity = new fe.Ghost(e.entity_id, pos, colour);
                 } else if(e.type === "pellet") {
-                    dbentity = new fe.Pellet([e.x * w + w/2, e.y * h + h/2], colour);
+                    dbentity = new fe.Pellet(pos, colour);
                 } else {
                     console.error(`unknown entity type "${e.type}"`);
                 }
@@ -83,7 +84,7 @@ class PlayScreen extends PacScreen {
                 me.game.world.addChild(dbentity, e.z);
             } else {
                 const dbentity = this.entities[e.entity_id];
-                dbentity.setPosition(e.x * w, e.y * h);
+                dbentity.setPosition(...pos);
             }
         }
         me.game.world.sort();
@@ -118,9 +119,7 @@ class PlayScreen extends PacScreen {
 
         this.socket.on("entities", this.processEntities.bind(this));
         this.socket.on("entity-updates", this.processEntities.bind(this));
-
         this.socket.on("removed-cell-contents", items => items.contents.map(eid => this.destroyEntity(eid)));
-
         this.socket.on("destroy-entity", entity => this.destroyEntity(entity.id));
 
         this.doKeyBinds();

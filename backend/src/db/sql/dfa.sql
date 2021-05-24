@@ -91,7 +91,9 @@ CREATE VIEW dfa.overview AS (
         ec.*,
         es.dfa_id        AS dfa_id,
         start.name       AS current_state,
+        start.id         AS current_state_id,
         destination.name AS next_state,
+        destination.id   AS next_state_id,
         c.fname          AS condition_function,
         eff.fname        AS effect_function ,
         e.weight         AS weight
@@ -210,6 +212,18 @@ RETURNS VOID AS $$
           ON mc.entity_id = _eid AND (dfa.normalise(mc.ẟx), dfa.normalise(mc.ẟy)) = (turns.x, turns.y)
     WHERE
         upd.entity_id = _eid
+$$ LANGUAGE sql;--
+
+
+CREATE FUNCTION dfa.eff_walk_right(_eid INT)
+RETURNS VOID AS $$
+    UPDATE environment.movement_components AS upd
+    SET
+        ẟx = mc.speed
+    FROM 
+        environment.movement_components AS mc
+    WHERE 
+        upd.entity_id = _eid AND mc.entity_id = _eid
 $$ LANGUAGE sql;--
 
 

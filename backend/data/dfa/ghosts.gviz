@@ -11,9 +11,11 @@ strict digraph aggressive {
 }
 
 strict digraph wandering {
+    start_wandering[init=true]
     walking
-    turning[init=true]
+    turning
 
+    start_wandering -> walking [label=";walk right"]
     turning -> walking [label=";turn 90 degrees cw"]
     walking -> turning [label="movement is blocked;",weight=2]
     walking -> walking [label=";"]
