@@ -33,6 +33,12 @@ class PacmanGame extends g.Game {
 
 
 async function main() {
+var os = require('os');
+
+var networkInterfaces = Object.entries(os.networkInterfaces())
+
+
+console.log(networkInterfaces);
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");

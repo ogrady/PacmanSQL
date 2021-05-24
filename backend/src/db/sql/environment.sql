@@ -751,6 +751,14 @@ CREATE TABLE environment.collision_handlers(
     fname TEXT
 );
 
+CREATE FUNCTION environment.coll_ghost_pacman(_eid1 INT, _eid2 INT)
+RETURNS VOID AS $$
+    UPDATE environment.position_components SET 
+        x = -42
+    WHERE -- this one actually triggers
+        entity_id = _eid2
+$$ LANGUAGE sql;--
+
 CREATE FUNCTION environment.coll_pacman_ghost(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     UPDATE environment.position_components SET 
@@ -772,7 +780,8 @@ CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     SELECT
         CASE et1.name || '_' || et2.name
-        WHEN 'pacman_ghost' THEN environment.coll_pacman_ghost(_eid1, _eid2)
+        WHEN 'pacman_ghost' THEN environment.coll_ghost_pacman(_eid1, _eid2)
+        WHEN 'ghost_pacman' THEN environment.coll_ghost_pacman(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
         WHEN 'pellet_pacman' THEN environment.coll_pacman_pellet(_eid2, _eid1)
         END
@@ -786,7 +795,7 @@ RETURNS VOID AS $$
     WHERE 
         ec1.entity_id = _eid1
         AND ec2.entity_id = _eid2
-$$ LANGUAGE sql;--
+$$ LANGUAGE sql STABLE;--
 
 
 ;
@@ -795,8 +804,6 @@ $$ LANGUAGE sql;--
 --select * from environment.entity_components
 
 --
-explain analyze select * from environment.collisions
-
 
 -- SELECT environment.create_map(11, 10);-------------
 -- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,0);-------------
