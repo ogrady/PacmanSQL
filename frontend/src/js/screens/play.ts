@@ -69,9 +69,10 @@ class PlayScreen extends PacScreen {
                 let dbentity: fe.Pacman | fe.Ghost | fe.Pellet | null = null;
                 const colour = U.rgbToHex([e.red, e.green, e.blue]);
                 if(e.type === "pacman") {
-                    dbentity = new fe.Pacman(e.entity_id, [Math.floor(e.x * w), Math.floor(e.y * h)], colour);
+                    dbentity = new fe.Pacman(e.entity_id, [e.x, e.y], [w/100, h/100], colour); //[Math.floor(e.x * w), Math.floor(e.y * h)], colour);
+                    console.log(e.x,e.y,w,h,e.z);
                 } else if(e.type === "ghost") {
-                    dbentity = new fe.Ghost(e.entity_id, [e.x * w, e.y * h], colour);
+                    dbentity = new fe.Ghost(e.entity_id, [e.x, e.y], [w/2, h/2], colour);
                 } else if(e.type === "pellet") {
                     dbentity = new fe.Pellet([e.x * w + w/2, e.y * h + h/2], colour);
                 } else {

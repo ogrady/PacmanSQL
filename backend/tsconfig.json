@@ -4,7 +4,7 @@
     "module": "commonjs",                   
     "lib": ["esnext", "dom"],                     
     "allowJs": true,
-    "outDir": "js",                          
+    "outDir": "build",                          
     "rootDir": "src",
     "strict": true,         
     "noImplicitAny": false,

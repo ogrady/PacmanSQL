@@ -9,12 +9,16 @@ export abstract class DBEntity extends me.Entity {
     public readonly dbId: number;
     protected orientation: Orientation;
     protected rotation: number;
+    protected positionScale: t.Coordinate;
 
-    public constructor(dbId: number, x: number, y: number, settings: object) {
-        super(x, y, settings);
+    public constructor(dbId: number, position: t.Coordinate, positionScale: t.Coordinate, settings: object) {
+        super(position[0], position[1], settings);
         this.dbId = dbId;
         this.orientation = Orientation.RIGHT;
         this.rotation = 0;
+        this.positionScale = positionScale;
+        this.x = positionScale[0] * position[0]; // do manually once to avoid running into NPE for yet-to-be-defined attribute renderable and face-methods
+        this.y = positionScale[1] * position[1];
     }
 
     protected straighten() {
@@ -33,25 +37,28 @@ export abstract class DBEntity extends me.Entity {
     }
 
     public setPosition(x: number, y: number): void {
-        if(x != this.pos.x || y != this.pos.y) {
-            if(x < this.pos.x) {
+        const [newx, newy] = [this.positionScale[0] * x, this.positionScale[1] * y];
+        console.log(newx, newy);
+
+        if(newx != this.pos.x || newy != this.pos.y) {
+            if(newx < this.pos.x) {
                 this.orientation = Orientation.LEFT;
                 this.faceLeft();
             }
-            else if (x > this.pos.x) {
+            else if (newx > this.pos.x) {
                 this.orientation = Orientation.RIGHT;
                 this.faceRight();
             }
-            else if (y < this.pos.y) {
+            else if (newy < this.pos.y) {
                 this.orientation = Orientation.UP;
                 this.faceUp();
             }
-            else if (y > this.pos.y) {
+            else if (newy > this.pos.y) {
                 this.orientation = Orientation.DOWN;
                 this.faceDown();
             }
-            this.pos.x = x;
-            this.pos.y = y;
+            this.pos.x = newx;
+            this.pos.y = newy;
 
             this.isDirty = true;
             this.renderable.isDirty = true;
@@ -70,8 +77,8 @@ export class Ghost extends DBEntity {
     private body: any;
     private eyes: any;
 
-    public constructor(dbId: number, position: t.Coordinate, colour = "#ff0000") {
-        super(dbId, position[0], position[1], {width: 46, height: 46});
+    public constructor(dbId: number, position: t.Coordinate, positionScale: t.Coordinate, colour = "#ff0000") {
+        super(dbId, position, positionScale, {width: 46, height: 46});
         this.colour = colour;
         this.body = new me.Sprite(position[0], position[1], {
             image: "ghost_body",
@@ -124,11 +131,8 @@ enum Orientation {
 
 
 export class Pacman extends DBEntity {
-    private nextFrame = 1;
-    private accu = 0;
-
-    public constructor(dbId: number, position: t.Coordinate, colour = "#f5e642") {
-        super(dbId, position[0], position[1], {width: 32, height: 32});
+    public constructor(dbId: number, position: t.Coordinate, positionScale: t.Coordinate, colour = "#f5e642") {
+        super(dbId, position, positionScale, {width: 32, height: 32});
 
         this.renderable = new me.Sprite(position[0], position[1], {
             image: "pacman",
