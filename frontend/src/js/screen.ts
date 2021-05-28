@@ -6,6 +6,6 @@ export class PacScreen extends me.Stage {
 
 	public constructor() {
 		super();
-		this.socket = io.io("http://127.0.0.1:3000");
+		this.socket = io.io(`http://${location.host}`);
 	}
 }
