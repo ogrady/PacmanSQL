@@ -71,14 +71,15 @@ export class Ghost extends DBEntity {
     private eyes: any;
 
     public constructor(dbId: number, position: t.Coordinate, colour = "#ff0000") {
-        super(dbId, position, {width: 32, height: 32});
+        const [gw, gh] = [90,90];
+        super(dbId, position, {width: gw, height: gh});
         this.colour = colour;
         this.body = new me.Sprite(-32/4,-32/4, {
             image: "ghost_body",
             framewidth: 32,
             frameheight: 32,
         });
-        this.eyes = new me.Sprite(0,0, {
+        this.eyes = new me.Sprite(-32/4,-20/4, {
             image: "ghost_eyes",
             framewidth: 32,
             frameheight: 32
@@ -94,7 +95,7 @@ export class Ghost extends DBEntity {
         this.eyes.addAnimation("left", [3]);
         this.faceDown();
 
-        this.renderable = new me.Container(100,80);
+        this.renderable = new me.Container(gw/2,gh/2,gw, gh);
         this.renderable.addChild(this.body);
         this.renderable.addChild(this.eyes);
 
