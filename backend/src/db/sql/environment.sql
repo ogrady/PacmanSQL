@@ -523,14 +523,6 @@ GROUP BY
 );--
 
 
--- this is basically a temporary table, but creating it in pg_temp keeps failing for some reason
-CREATE TABLE environment.cleared_cells(
-    cell_id INT,
-    x INT,
-    y INT
-);--
-
-
 -- for debugging, visualises the map nicely
 CREATE VIEW environment.visual_map(content) AS (
     SELECT 
@@ -544,28 +536,17 @@ CREATE VIEW environment.visual_map(content) AS (
 );--
 
 
+-- entity ids of colliding entities, where
+-- eid1 is the entity with smaller typename (to make defining handler functions easier)
 CREATE VIEW environment.collisions(eid1, eid2) AS (
     SELECT 
-        ec1.entity_id,
-        ec2.entity_id
+        CASE WHEN ec1.type < ec2.type THEN ec1.entity_id ELSE ec2.entity_id END,
+        CASE WHEN ec1.type < ec2.type THEN ec2.entity_id ELSE ec1.entity_id END
     FROM 
         environment.entity_components AS ec1
         JOIN environment.entity_components AS ec2
           ON BOX(POINT(ec1.x, ec1.y),POINT(ec1.x + ec1.width, ec1.y + ec1.height)) && BOX(POINT(ec2.x, ec2.y),POINT(ec2.x + ec2.width, ec2.y + ec2.height))
           AND ec1.entity_id < ec2.entity_id -- <> removes collisions with self, < removes duplicate collisions
-    --SELECT 
-    --    pc1.entity_id,
-    --    pc2.entity_id
-    --FROM 
-    --    environment.position_components AS pc1 
-    --    JOIN environment.extent_components AS ec1 
-    --      ON pc1.entity_id = ec1.entity_id,
-    --    environment.position_components AS pc2
-    --    JOIN environment.extent_components AS ec2
-    --      ON pc2.entity_id = ec2.entity_id
-    --WHERE 
-    --    BOX(POINT(pc1.x, pc1.y),POINT(pc1.x + ec1.width, pc1.y + ec1.height)) && BOX(POINT(pc2.x, pc2.y),POINT(pc2.x + ec2.width, pc2.y + ec2.height))
-    --    AND pc1.entity_id < pc2.entity_id 
 );--
 
 ---------------------------------------------------------------
@@ -595,9 +576,7 @@ RETURNS VOID AS $$
 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.update_positions()
-RETURNS TABLE(eid INT, x INT, y INT) AS $$
-    DELETE FROM environment.cleared_cells;
-
+RETURNS VOID AS $$
     WITH upd(entity_id, new_x, new_y) AS (
         SELECT 
             ec.entity_id,
@@ -620,48 +599,6 @@ RETURNS TABLE(eid INT, x INT, y INT) AS $$
         upd
     WHERE 
         pc.entity_id = upd.entity_id
-    ;
-
-    --INSERT INTO environment.cleared_cells(cell_id, x ,y)
-    --WITH obp(entity_id, x, y) AS (
-    --    SELECT 
-    --        entity_id,
-    --        ROUND(x),
-    --        ROUND(y)
-    --    FROM 
-    --        environment.entity_components AS ec
-    --    WHERE 
-    --        type = 'pacman'
-    --)
-    --SELECT 
-    --    c.id,
-    --    c.x,
-    --    c.y
-    --FROM 
-    --    environment.cells AS c 
-    --    JOIN obp
-    --      ON (c.x, c.y) = (obp.x, obp.y)
-    --WHERE
-    --    content IS NOT NULL
-    --;
---
-    --UPDATE environment.cells SET 
-    --    content = NULL 
-    --WHERE 
-    --    id IN (SELECT cell_id FROM environment.cleared_cells)
-    --;
---
---
-    --UPDATE environment.game_state SET 
-    --    score = score + (SELECT COUNT(cell_id) FROM environment.cleared_cells)
-    --;
---
-    SELECT 
-        cell_id, 
-        x, 
-        y 
-    FROM 
-        environment.cleared_cells
     ;
 $$ LANGUAGE sql;--
 
@@ -779,11 +716,11 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     SELECT
+        -- eid1 and eid2 are lexicographically ordered on their type names.
+        -- So dispatchers always need to have their name arranged in that way too.
         CASE et1.name || '_' || et2.name
-        WHEN 'pacman_ghost' THEN environment.coll_ghost_pacman(_eid1, _eid2)
         WHEN 'ghost_pacman' THEN environment.coll_ghost_pacman(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
-        WHEN 'pellet_pacman' THEN environment.coll_pacman_pellet(_eid2, _eid1)
         END
     FROM 
         environment.type_components AS ec1
@@ -799,11 +736,6 @@ $$ LANGUAGE sql STABLE;--
 
 
 ;
-
---select environment.dispatch_collision_handler(52, 7);
---select * from environment.entity_components
-
---
 
 -- SELECT environment.create_map(11, 10);-------------
 -- UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (0,0);-------------
