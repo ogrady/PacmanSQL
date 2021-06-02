@@ -94,11 +94,11 @@ export class Ghost extends DBEntity {
         this.eyes.addAnimation("left", [3]);
         this.faceDown();
 
-        /*this.renderable = new me.Container(85,80);
+        this.renderable = new me.Container(100,80);
         this.renderable.addChild(this.body);
         this.renderable.addChild(this.eyes);
-        */
-        this.renderable = this.body;
+
+        //this.renderable = this.body;
         console.log(this.pos);
     }
 

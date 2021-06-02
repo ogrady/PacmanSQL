@@ -6,39 +6,39 @@ import * as reader from "./util/datareader";
 import * as ws from "./server/webserver";
 import * as g from "./game";
 
+// this is basically just a type alias to shorten the constructors because I'm that kinda guy...
+class gc extends g.GameComponent<PacmanGame> {
+    constructor(n, g) { super(n,g); }
+}
 
 class PacmanGame extends g.Game {
-    private pacdb: db.PacmanDB;
-    private webserver: ws.WebServer;
+    public readonly pacdb: db.PacmanDB;
+    public readonly webserver: ws.WebServer;
 
     public constructor(pacdb: db.PacmanDB, webserver: ws.WebServer, tickDelay: number) {
         super(tickDelay);
         this.pacdb = pacdb;
         this.webserver = webserver;
-    }
 
-    protected async update(delta: number) {
-        await this.pacdb.environment.checkpoint();
-        this.pacdb.pathfinding.tickPathsearch();
-        await this.pacdb.dfa.tick();
-        const clearedCells = await this.pacdb.environment.updatePositions();
-        await this.pacdb.environment.handleCollisions();
-        const updates = await this.pacdb.environment.getEntityDelta();
-        if(updates.length > 0) {
-            this.webserver.broadcast("entity-updates", updates);
-        }
+        this.addComponent(new gc(20, async game => await game.pacdb.pathfinding.tickPathsearch()));
+        this.addComponent(new gc(20, async game => await game.pacdb.dfa.tick()));
+        this.addComponent(new gc(20, async game => {
+            await game.pacdb.environment.updatePositions();
+            await game.pacdb.environment.handleCollisions();
+        }));
+        this.addComponent(new gc(50, async game => {
+            const updates = await game.pacdb.environment.getEntityDelta();
+            if(updates.length > 0) {
+                await game.pacdb.environment.checkpoint();
+                await game.webserver.broadcast("entity-updates", updates);
+            }
+        }));
     }
 }
 
 
 
 async function main() {
-var os = require('os');
-
-var networkInterfaces = Object.entries(os.networkInterfaces())
-
-
-console.log(networkInterfaces);
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
