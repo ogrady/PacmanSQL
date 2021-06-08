@@ -6,7 +6,7 @@ import * as reader from "./util/datareader";
 import * as ws from "./server/webserver";
 import * as g from "./game";
 
-// this is basically just a type alias to shorten the constructors because I'm that kinda guy...
+// this is basically just a type alias to shorten the constructor calls because I'm that kinda guy...
 class gc extends g.GameComponent<PacmanGame> {
     constructor(n, g) { super(n,g); }
 }

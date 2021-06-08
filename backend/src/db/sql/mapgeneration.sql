@@ -256,32 +256,49 @@ REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
 
 ----- FUNCTEST
 
-WITH 
-gap(empty_x, empty_y, neighbour_module_id, neighbour_edge, neighbour_facing, neighbour_required) AS (
-    SELECT 
-        fm.empty_x,
-        fm.empty_y,
-        fm.neighbour_module_id,
-        me.edge,
-        me.facing,
-        me.required
-    FROM 
-        mapgen.free_modules AS fm
-        LEFT JOIN mapgen.module_edges AS me 
-          ON fm.neighbour_module_id = me.module_id
-    WHERE
-        neighbours_count = 2
-    ORDER BY 
-        POINT(fm.empty_x + 0.5, fm.empty_y + 0.5) <-> POINT(fm.neighbour_centroid[0] + me.offs[0]/2, fm.neighbour_centroid[1] + me.offs[1]/2)
-    LIMIT 
-        2
-)
-SELECT 
-    *
-FROM 
-    gap AS p
-    JOIN mapgen.edge_compatibility AS ec 
-      ON (p.neighbour_module_id, p.neighbour_facing) = (ec.that_module_id, ec.that_facing)
-;
+CREATE FUNCTION mapgen.generate_module() 
+RETURNS VOID AS $$
+    INSERT INTO mapgen.module_map(x, y, module_id) 
+    WITH 
+    gap(empty_x, empty_y, neighbour_module_id, neighbour_edge, neighbour_facing, neighbour_required) AS (
+        SELECT 
+            fm.empty_x,
+            fm.empty_y,
+            fm.neighbour_module_id,
+            me.edge,
+            me.facing,
+            me.required
+        FROM 
+            mapgen.free_modules AS fm
+            LEFT JOIN mapgen.module_edges AS me 
+              ON fm.neighbour_module_id = me.module_id
+        WHERE
+            neighbours_count = 2
+        ORDER BY 
+            POINT(fm.empty_x + 0.5, fm.empty_y + 0.5) <-> POINT(fm.neighbour_centroid[0] + me.offs[0]/2, fm.neighbour_centroid[1] + me.offs[1]/2)
+        LIMIT 
+            2
+    ),
+    candidates(empty_x, empty_y, module_id) AS (
+        SELECT
+            MAX(empty_x), -- THE
+            MAX(empty_y), -- THE
+            this_module_id
+        FROM 
+            gap AS p
+            JOIN mapgen.edge_compatibility AS ec 
+              ON (p.neighbour_module_id, p.neighbour_facing) = (ec.that_module_id, ec.that_facing)
+        GROUP BY 
+            this_module_id
+        ORDER BY 
+            COUNT(*), SUM(frequency) -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.)
+    )
+    SELECT * FROM candidates
+    ;
+$$ LANGUAGE sql;--
 
-table mapgen.edge_compatibility;
+select * from mapgen.module_map;
+select mapgen.generate_module();
+select * from mapgen.module_map;
+select mapgen.generate_module();
+select * from mapgen.module_map;
