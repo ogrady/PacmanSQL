@@ -2,7 +2,6 @@
 DROP SCHEMA IF EXISTS mapgen CASCADE;
 CREATE SCHEMA mapgen;
 
-
 CREATE TABLE mapgen.tiles(
     id    SERIAL PRIMARY KEY,
     value TEXT
@@ -211,46 +210,52 @@ CREATE MATERIALIZED VIEW mapgen.edge_compatibility(this_module_id, this_edge_ids
 
 ----- TESTING
 INSERT INTO mapgen.tiles(value) (VALUES
-    ('x'), ('y'), ('z')
+    ('□'), ('☒')
 );
 
 insert into mapgen.compatible_tiles(this_id, that_id, frequency) (values
-    (1, 1, 1), -- x - x
-    (1, 2, 5), -- x - y
-    (2, 2, 2)  -- y - y
+    (1, 1, 4), -- □ - □
+    (2, 2, 1)  -- ☒ - ☒
 );
 
 INSERT INTO mapgen.modules(id) (VALUES
-    (1), (2)
+    (1), (2), (3), (4), (5), (6), (7)
 );
 
 INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES 
-    (1, 1, 1, 3),
-    (1, 1, 2, 1),
-    (1, 1, 3, 2),
-    (1, 2, 1, 1),
-    (1, 2, 2, 1),
-    (1, 2, 3, 1),
-    (1, 3, 1, 1),
-    (1, 3, 2, 1),
-    (1, 3, 3, 1),
+    (1, 1, 1, 2), (1, 1, 2, 1), (1, 1, 3, 2), -- vertical corridor
+    (1, 2, 1, 2), (1, 2, 2, 1), (1, 2, 3, 2),
+    (1, 3, 1, 2), (1, 3, 2, 1), (1, 3, 3, 2),
 
-    (2, 1, 1, 2),
-    (2, 1, 2, 2),
-    (2, 1, 3, 2),
-    (2, 2, 1, 2),
-    (2, 2, 2, 2),
-    (2, 2, 3, 2),
-    (2, 3, 1, 2),
-    (2, 3, 2, 2),
-    (2, 3, 3, 2)
+    (2, 1, 1, 2), (2, 1, 2, 2), (2, 1, 3, 2), -- horizontal corridor
+    (2, 2, 1, 1), (2, 2, 2, 1), (2, 2, 3, 1),
+    (2, 3, 1, 2), (2, 3, 2, 2), (2, 3, 3, 2),
+
+    (3, 1, 1, 2), (3, 1, 2, 2), (3, 1, 3, 2), -- corner ↱
+    (3, 2, 1, 2), (3, 2, 2, 1), (3, 2, 3, 1),
+    (3, 3, 1, 2), (3, 3, 2, 1), (3, 3, 3, 2),
+
+    (4, 1, 1, 2), (4, 1, 2, 2), (4, 1, 3, 2), -- corner ↰
+    (4, 2, 1, 1), (4, 2, 2, 1), (4, 2, 3, 2),
+    (4, 3, 1, 2), (4, 3, 2, 1), (4, 3, 3, 2),
+
+    (5, 1, 1, 2), (5, 1, 2, 1), (5, 1, 3, 2), -- corner ↳
+    (5, 2, 1, 2), (5, 2, 2, 1), (5, 2, 3, 1),
+    (5, 3, 1, 2), (5, 3, 2, 2), (5, 3, 3, 2),
+
+    (6, 1, 1, 2), (6, 1, 2, 1), (6, 1, 3, 2), -- corner ↲
+    (6, 2, 1, 1), (6, 2, 2, 1), (6, 2, 3, 2),
+    (6, 3, 1, 2), (6, 3, 2, 2), (6, 3, 3, 2),
+
+    (7, 1, 1, 2), (7, 1, 2, 1), (7, 1, 3, 2), -- crossing
+    (7, 2, 1, 1), (7, 2, 2, 1), (7, 2, 3, 1),
+    (7, 3, 1, 2), (7, 3, 2, 1), (7, 3, 3, 2)
 );
 
 
 insert into mapgen.module_map(x,y,module_id) (VALUES (0,0,1));
 insert into mapgen.module_map(x,y,module_id) (VALUES (0,1,1));
 insert into mapgen.module_map(x,y,module_id) (VALUES (1,0,1));
--- insert into mapgen.module_map(x,y,module_id) (VALUES (0,3,1));
 
 REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
 
@@ -291,14 +296,56 @@ RETURNS VOID AS $$
         GROUP BY 
             this_module_id
         ORDER BY 
-            COUNT(*), SUM(frequency) -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.)
+            COUNT(*), SUM(frequency) * RANDOM() -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.)
+        LIMIT 
+            1
     )
     SELECT * FROM candidates
     ;
 $$ LANGUAGE sql;--
 
+select 'init';
+select * from mapgen.module_map;
+select 'now generating for first time';
+select mapgen.generate_module();
+select 'after first generation';
 select * from mapgen.module_map;
 select mapgen.generate_module();
 select * from mapgen.module_map;
-select mapgen.generate_module();
-select * from mapgen.module_map;
+
+    WITH 
+    gap(empty_x, empty_y, neighbour_module_id, neighbour_edge, neighbour_facing, neighbour_required) AS (
+        SELECT 
+            fm.empty_x,
+            fm.empty_y,
+            fm.neighbour_module_id,
+            me.edge,
+            me.facing,
+            me.required
+        FROM 
+            mapgen.free_modules AS fm
+            LEFT JOIN mapgen.module_edges AS me 
+              ON fm.neighbour_module_id = me.module_id
+        WHERE
+            neighbours_count = 2
+        ORDER BY 
+            POINT(fm.empty_x + 0.5, fm.empty_y + 0.5) <-> POINT(fm.neighbour_centroid[0] + me.offs[0]/2, fm.neighbour_centroid[1] + me.offs[1]/2)
+        LIMIT 
+            2
+    ),
+    candidates(empty_x, empty_y, module_id) AS (
+        SELECT
+            MAX(empty_x), -- THE
+            MAX(empty_y), -- THE
+            this_module_id
+        FROM 
+            gap AS p
+            JOIN mapgen.edge_compatibility AS ec 
+              ON (p.neighbour_module_id, p.neighbour_facing) = (ec.that_module_id, ec.that_facing)
+        GROUP BY 
+            this_module_id
+        ORDER BY 
+            COUNT(*), SUM(frequency) -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.)
+    )
+    SELECT * FROM candidates
+    ;
