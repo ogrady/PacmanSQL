@@ -2,6 +2,22 @@
 DROP SCHEMA IF EXISTS mapgen CASCADE;
 CREATE SCHEMA mapgen;
 
+
+CREATE OR REPLACE FUNCTION the_func(acc anyelement, x anyelement) RETURNS anyelement AS $$
+BEGIN
+    IF acc <> x THEN 
+        RAISE EXCEPTION 'THE used on an inconsistent list. Expected consistent %, but the list also contained %.', acc, x ;
+    END IF;
+    RETURN x;
+END $$ LANGUAGE PLPGSQL STRICT;-- STRICT ignores null values
+
+CREATE OR REPLACE AGGREGATE the(anyelement)
+(
+    sfunc = the_func,
+    stype = anyelement
+);--
+
+
 CREATE TABLE mapgen.tiles(
     id    SERIAL PRIMARY KEY,
     value TEXT
@@ -32,15 +48,17 @@ CREATE TABLE mapgen.module_contents(
     FOREIGN KEY(module_id) REFERENCES mapgen.modules(id),
     FOREIGN KEY(tile_id) REFERENCES mapgen.tiles(id),
     UNIQUE(module_id,x,y),
-    CHECK (x IN (1,2,3)),
-    CHECK (y IN (1,2,3))
+    CHECK (x IN (0,1,2)),
+    CHECK (y IN (0,1,2))
 );--
 
 
---CREATE TABLE mapgen.map(
---    x INT,
---    y INT
---);--
+CREATE TABLE mapgen.map(
+    x INT,
+    y INT,
+    tile_id INT,
+    FOREIGN KEY(tile_id) REFERENCES mapgen.tiles(id)
+);--
 
 CREATE TABLE mapgen.module_map(
     id SERIAL PRIMARY KEY,
@@ -54,7 +72,7 @@ CREATE TABLE mapgen.module_map(
 
 
 CREATE VIEW mapgen.neighbour_offsets(x, y) AS (
-    SELECT x,y FROM (VALUES (1,0), (0,1), (-1,0), (0,-1)) AS xs(x,y)
+    SELECT x,y FROM (VALUES (1,0), (0,1), (-1,0), (0,-1)) AS xs(x,y) -- this had ", (-1,0), (0,-1)"" before as well, but since we are only expanding downwards and right, they are not needed and, in fact, caused bugs with neighbours that were counted twice, due to the negative offset
 );--
 
 
@@ -131,8 +149,8 @@ CREATE VIEW mapgen.module_edges AS (
     ),
     directions(x, y, facing, required, offs) AS ( 
         (VALUES
-            (null, 1, '↑', '↓', POINT(0, -1)), (null, 3, '↓', '↑', POINT(0, 1)),
-            (1, null, '←', '→', POINT(-1, 0)), (3, null, '→', '←', POINT(1, 0))
+            (null, 0, '↑', '↓', POINT(0, -1)), (null, 2, '↓', '↑', POINT(0, 1)),
+            (0, null, '←', '→', POINT(-1, 0)), (2, null, '→', '←', POINT(1, 0))
         )
     ),
     edges AS (
@@ -206,7 +224,7 @@ CREATE MATERIALIZED VIEW mapgen.edge_compatibility(this_module_id, this_edge_ids
 );--
 
 
-CREATE VIEW mapgen.map AS (
+CREATE VIEW mapgen.module_map_pretty AS (
     WITH tiles(x, y, t) AS (
         SELECT
             mm.x * 3 + mc.x,
@@ -220,69 +238,37 @@ CREATE VIEW mapgen.map AS (
               ON mc.tile_id = t.id
     )
     SELECT 
-        string_agg(t, '' ORDER BY x)
+        string_agg(t, ' ' ORDER BY x)
     FROM 
         tiles
     GROUP BY 
         y
 );--
 
+CREATE VIEW mapgen.map_pretty AS (
+    WITH tiles(x, y, t) AS (
+        SELECT
+            m.x,
+            m.y,
+            t.value
+        FROM 
+            mapgen.map AS m 
+            JOIN mapgen.tiles AS t 
+              ON m.tile_id = t.id
+    )
+    SELECT 
+        string_agg(t, ' ' ORDER BY x)
+    FROM 
+        tiles
+    GROUP BY 
+        y
+);--
 
------ TESTING
-INSERT INTO mapgen.tiles(value) (VALUES
-    ('□'), ('■')
-);
-
-insert into mapgen.compatible_tiles(this_id, that_id, frequency) (values
-    (1, 1, 1), -- □ - □
-    (2, 2, 1)  -- ☒ - ☒
-);
-
-INSERT INTO mapgen.modules(id) (VALUES
-    (1), (2), (3), (4), (5), (6), (7)
-);
-
-INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES 
-    (1, 1, 1, 2), (1, 2, 1, 1), (1, 3, 1, 2), -- vertical corridor
-    (1, 1, 2, 2), (1, 2, 2, 1), (1, 3, 2, 2),
-    (1, 1, 3, 2), (1, 2, 3, 1), (1, 3, 3, 2),
-
-    (2, 1, 1, 2), (2, 2, 1, 2), (2, 3, 1, 2), -- horizontal corridor
-    (2, 1, 2, 1), (2, 2, 2, 1), (2, 3, 2, 1),
-    (2, 1, 3, 2), (2, 2, 3, 2), (2, 3, 3, 2),
-
-    (3, 1, 1, 2), (3, 2, 1, 2), (3, 3, 1, 2), -- corner ↱
-    (3, 1, 2, 2), (3, 2, 2, 1), (3, 3, 2, 1),
-    (3, 1, 3, 2), (3, 2, 3, 1), (3, 3, 3, 2),
-
-    (4, 1, 1, 2), (4, 2, 1, 2), (4, 3, 1, 2), -- corner ↰
-    (4, 1, 2, 1), (4, 2, 2, 1), (4, 3, 2, 2),
-    (4, 1, 3, 2), (4, 2, 3, 1), (4, 3, 3, 2),
-
-    (5, 1, 1, 2), (5, 2, 1, 1), (5, 3, 1, 2), -- corner ↳
-    (5, 1, 2, 2), (5, 2, 2, 1), (5, 3, 2, 1),
-    (5, 1, 3, 2), (5, 2, 3, 2), (5, 3, 3, 2),
-
-    (6, 1, 1, 2), (6, 2, 1, 1), (6, 3, 1, 2), -- corner ↲
-    (6, 1, 2, 1), (6, 2, 2, 1), (6, 3, 2, 2),
-    (6, 1, 3, 2), (6, 2, 3, 2), (6, 3, 3, 2),
-
-    (7, 1, 1, 2), (7, 2, 1, 1), (7, 3, 1, 2), -- crossing
-    (7, 1, 2, 1), (7, 2, 2, 1), (7, 3, 2, 1),
-    (7, 1, 3, 2), (7, 2, 3, 1), (7, 3, 3, 2)
-);
-
-
-insert into mapgen.module_map(x,y,module_id) (VALUES (0,0,3));
-insert into mapgen.module_map(x,y,module_id) (VALUES (0,1,1));
-insert into mapgen.module_map(x,y,module_id) (VALUES (1,0,7));
-
-REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
-
------ FUNCTEST
-
-CREATE FUNCTION mapgen.generate_module() 
-RETURNS VOID AS $$
+-- generates one module. 
+-- If _pos is specified, a module will be generated at that position. 
+-- If _pos is NULL, a position with two neighbours will be selected to generate a module at.
+CREATE FUNCTION mapgen.generate_module(_pos POINT) 
+RETURNS INT AS $$
     INSERT INTO mapgen.module_map(x, y, module_id) 
     WITH 
     gap(empty_x, empty_y, neighbour_module_id, neighbour_edge, neighbour_facing, neighbour_required) AS (
@@ -298,7 +284,8 @@ RETURNS VOID AS $$
             LEFT JOIN mapgen.module_edges AS me 
               ON fm.neighbour_module_id = me.module_id
         WHERE
-            neighbours_count = 2
+            (_pos IS NOT NULL AND _pos ~= POINT(fm.empty_x, fm.empty_y)) -- ~= is the "same as" operator that is defined on geometric types
+            OR neighbours_count = 2
         ORDER BY 
             POINT(fm.empty_x + 0.5, fm.empty_y + 0.5) <-> POINT(fm.neighbour_centroid[0] + me.offs[0]/2, fm.neighbour_centroid[1] + me.offs[1]/2)
         LIMIT 
@@ -306,73 +293,182 @@ RETURNS VOID AS $$
     ),
     candidates(empty_x, empty_y, module_id) AS (
         SELECT
-            MAX(empty_x), -- THE
-            MAX(empty_y), -- THE
-            this_module_id
+            p.empty_x,
+            p.empty_y,
+            ec.this_module_id
         FROM 
             gap AS p
             JOIN mapgen.edge_compatibility AS ec 
               ON (p.neighbour_module_id, p.neighbour_facing) = (ec.that_module_id, ec.that_facing)
         GROUP BY 
-            this_module_id
+            empty_x, empty_y, this_module_id
         ORDER BY 
             COUNT(*) DESC, SUM(frequency) * RANDOM() -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.), and then among those randomly with weight towards higher frequencies
         LIMIT 
             1
     )
-    SELECT * FROM candidates
-    ;
+    SELECT * FROM candidates RETURNING module_id
 $$ LANGUAGE sql;--
 
 
-    WITH 
-    gap(empty_x, empty_y, neighbour_module_id, neighbour_edge, neighbour_facing, neighbour_required) AS (
-        SELECT 
-            fm.empty_x,
-            fm.empty_y,
-            fm.neighbour_module_id,
-            me.edge,
-            me.facing,
-            me.required
-        FROM 
-            mapgen.free_modules AS fm
-            LEFT JOIN mapgen.module_edges AS me 
-              ON fm.neighbour_module_id = me.module_id
-        WHERE
-            neighbours_count = 2
-        ORDER BY 
-            POINT(fm.empty_x + 0.5, fm.empty_y + 0.5) <-> POINT(fm.neighbour_centroid[0] + me.offs[0]/2, fm.neighbour_centroid[1] + me.offs[1]/2)
-        LIMIT 
-            2
-    ),
-    candidates AS (
-        SELECT
-            MAX(empty_x) as empty_x, -- THE
-            MAX(empty_y) as empty_y, -- THE
-            this_module_id as module_id,
-            count(*)
-        FROM 
-            gap AS p
-            JOIN mapgen.edge_compatibility AS ec 
-              ON (p.neighbour_module_id, p.neighbour_facing) = (ec.that_module_id, ec.that_facing)
-        GROUP BY 
-            this_module_id
-        ORDER BY 
-            COUNT(*) DESC, SUM(frequency) * RANDOM() -- module with most matching edges (whould be 2 for, say ▛, and 1 for ▌ et al.), and then among those randomly with weight towards higher frequencies
+-- expands the map by one row and one column of modules
+CREATE FUNCTION mapgen.expand_map() 
+RETURNS INT AS $$
+    WITH modules(mid) AS (
+        SELECT mapgen.generate_module(POINT(MAX(x) + 1, 0)) FROM mapgen.module_map AS mm -- expand to the right...
+        UNION ALL
+        SELECT mapgen.generate_module(POINT(0, MAX(y) + 1)) FROM mapgen.module_map AS mm -- ...and down
+        UNION ALL
+        (
+            WITH RECURSIVE generate AS (
+                SELECT mapgen.generate_module(NULL)
+                UNION -- RETURNING apparently produces empty rows (???) instead of no result when nothing is inserted, so we need UNION instead of UNION ALL to stop when TWO empty rows have been returned...
+                SELECT mapgen.generate_module(NULL) FROM generate
+            )
+            SELECT * FROM generate
+        )
+    ) SELECT COUNT(*) FROM modules
+$$ LANGUAGE sql;--
+
+-- creates a quadractic map of size _size x _size (counted in modules, not tiles)
+CREATE FUNCTION mapgen.generate_map(_size INT) 
+RETURNS TABLE(mid INT, r INT) AS $$
+    WITH RECURSIVE progress(mid, remaining) AS (
+        SELECT mapgen.expand_map(), _size 
+        UNION ALL
+        SELECT mapgen.expand_map(), progress.remaining - 1 FROM progress WHERE progress.remaining > 0
     )
-    select * from candidates
+    SELECT mid, remaining FROM progress
+$$ LANGUAGE sql;--
+
+
+----- TESTING
+INSERT INTO mapgen.tiles(value) (VALUES
+    ('□'), ('■'), ('■')
+);
+
+insert into mapgen.compatible_tiles(this_id, that_id, frequency) (values
+    (1, 1, 1), -- □ - □
+    (2, 2, 1)  -- ☒ - ☒
+);
+
+INSERT INTO mapgen.modules(id) SELECT x FROM generate_series(1, 12) AS xs(x);
+
+INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES 
+    ( 1, 0, 0, 2), ( 1, 1, 0, 1), ( 1, 2, 0, 2), -- vertical corridor
+    ( 1, 0, 1, 2), ( 1, 1, 1, 1), ( 1, 2, 1, 2),
+    ( 1, 0, 2, 2), ( 1, 1, 2, 1), ( 1, 2, 2, 2),
+    ( 2, 0, 0, 2), ( 2, 1, 0, 2), ( 2, 2, 0, 2), -- horizontal corridor
+    ( 2, 0, 1, 1), ( 2, 1, 1, 1), ( 2, 2, 1, 1),
+    ( 2, 0, 2, 2), ( 2, 1, 2, 2), ( 2, 2, 2, 2),
+    ( 3, 0, 0, 2), ( 3, 1, 0, 2), ( 3, 2, 0, 2), -- corner ↱
+    ( 3, 0, 1, 2), ( 3, 1, 1, 1), ( 3, 2, 1, 1),
+    ( 3, 0, 2, 2), ( 3, 1, 2, 1), ( 3, 2, 2, 2),
+    ( 4, 0, 0, 2), ( 4, 1, 0, 2), ( 4, 2, 0, 2), -- corner ↰
+    ( 4, 0, 1, 1), ( 4, 1, 1, 1), ( 4, 2, 1, 2),
+    ( 4, 0, 2, 2), ( 4, 1, 2, 1), ( 4, 2, 2, 2),
+    ( 5, 0, 0, 2), ( 5, 1, 0, 1), ( 5, 2, 0, 2), -- corner ↳
+    ( 5, 0, 1, 2), ( 5, 1, 1, 1), ( 5, 2, 1, 1),
+    ( 5, 0, 2, 2), ( 5, 1, 2, 2), ( 5, 2, 2, 2),
+    ( 6, 0, 0, 2), ( 6, 1, 0, 1), ( 6, 2, 0, 2), -- corner ↲
+    ( 6, 0, 1, 1), ( 6, 1, 1, 1), ( 6, 2, 1, 2),
+    ( 6, 0, 2, 2), ( 6, 1, 2, 2), ( 6, 2, 2, 2),
+    ( 7, 0, 0, 2), ( 7, 1, 0, 1), ( 7, 2, 0, 2), -- crossing
+    ( 7, 0, 1, 1), ( 7, 1, 1, 1), ( 7, 2, 1, 1),
+    ( 7, 0, 2, 2), ( 7, 1, 2, 1), ( 7, 2, 2, 2),
+    ( 8, 0, 0, 2), ( 8, 1, 0, 1), ( 8, 2, 0, 2), -- crossing, again
+    ( 8, 0, 1, 1), ( 8, 1, 1, 1), ( 8, 2, 1, 1),
+    ( 8, 0, 2, 2), ( 8, 1, 2, 1), ( 8, 2, 2, 2),
+    ( 9, 0, 0, 2), ( 9, 1, 0, 2), ( 9, 2, 0, 2), -- T
+    ( 9, 0, 1, 1), ( 9, 1, 1, 1), ( 9, 2, 1, 1),
+    ( 9, 0, 2, 2), ( 9, 1, 2, 1), ( 9, 2, 2, 2),
+    (10, 0, 0, 2), (10, 1, 0, 1), (10, 2, 0, 2), -- T up
+    (10, 0, 1, 1), (10, 1, 1, 1), (10, 2, 1, 1),
+    (10, 0, 2, 2), (10, 1, 2, 2), (10, 2, 2, 2),
+    (11, 0, 0, 2), (11, 1, 0, 1), (11, 2, 0, 2), -- T right
+    (11, 0, 1, 2), (11, 1, 1, 1), (11, 2, 1, 1),
+    (11, 0, 2, 2), (11, 1, 2, 1), (11, 2, 2, 2),
+    (12, 0, 0, 2), (12, 1, 0, 1), (12, 2, 0, 2), -- T left
+    (12, 0, 1, 1), (12, 1, 1, 1), (12, 2, 1, 2),
+    (12, 0, 2, 2), (12, 1, 2, 1), (12, 2, 2, 2)
+);
+
+
+insert into mapgen.module_map(x,y,module_id) (VALUES (0,0,3));
+--insert into mapgen.module_map(x,y,module_id) (VALUES (0,1,1));
+--insert into mapgen.module_map(x,y,module_id) (VALUES (0,2,5));
+--insert into mapgen.module_map(x,y,module_id) (VALUES (1,0,7));
+
+REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
+
+----- FUNCTEST
+
+select setseed(0.6);
+\timing on
+SELECT COUNT(*) FROM mapgen.generate_map(10);
+
+
+INSERT INTO mapgen.map(x, y, tile_id)
+WITH tiles(x, y, tile_id, priority) AS (
+    SELECT 
+        mm.x * 3 + mc.x + 1 AS x,
+        mm.y * 3 + mc.y + 1 AS y,
+        mc.tile_id,
+        1
+    FROM 
+        mapgen.module_map AS mm 
+        JOIN mapgen.module_contents AS mc
+            ON mc.module_id = mm.module_id
+    UNION ALL
+    SELECT 
+        w.x,
+        h.y,
+        3,
+        2 -- priority. Whatever is already taken up by the actual tiles has high priority (1), map borders are only considered if nothing else takes up that space
+    FROM 
+        generate_series(0, (SELECT MAX(x) * 3 + 4 FROM mapgen.module_map)) AS w(x),
+        generate_series(0, (SELECT MAX(y) * 3 + 4 FROM mapgen.module_map)) AS h(y)
+)
+SELECT DISTINCT ON (x,y) 
+    x, y, tile_id
+FROM 
+    tiles
+ORDER BY 
+    x,y,priority
 ;
+select * from mapgen.map_pretty;
+select * from mapgen.map order by x,y;
 
-select 'init';
-select * from mapgen.module_map;
-select 'now generating for first time';
-select mapgen.generate_module();
-select 'after first generation';
-select * from mapgen.module_map;
-select mapgen.generate_module();
-select * from mapgen.module_map;
+--select * from mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+--SELECT mapgen.expand_map();
+--SELECT * FROM mapgen.map_pretty;
+
+--    select 'right', POINT(MAX(x) + 1, 0) FROM mapgen.module_map;
+--   SELECT mapgen.generate_module(POINT(MAX(x) + 1, 0)) FROM mapgen.module_map AS mm; -- expand to the right...
+--   select * from mapgen.module_map;
+--
+--    SELECT * FROM mapgen.map_pretty;   
+--    select 'down', POINT(0, MAX(y) + 1) FROM mapgen.module_map ;
+--   SELECT mapgen.generate_module(POINT(0, MAX(y) + 1)) FROM mapgen.module_map AS mm; -- ...and down
+--   select * from mapgen.module_map;
+--
+--   SELECT * FROM mapgen.map_pretty;
+--   ;
+   --     
+   -- SELECT mapgen.generate_module(NULL);
+   -- SELECT mapgen.generate_module(NULL);
 
 
 
-
-SELECT * FROM mapgen.map;
