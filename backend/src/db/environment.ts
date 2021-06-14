@@ -57,8 +57,8 @@ export class Environment extends db.DBUnit {
         //return this.createEntity("pacman", x, y, 30, 30, ẟx, ẟy, 0.04, controller);
     }
 
-    public async createGhost(x: number, y: number, dfa = ""): Promise<number> {
-        return (await this.func(`environment.create_ghost`, [x, y, 255, 0, 0, db.str(dfa)]))[0].id;
+    public async createGhost(x: number, y: number, dfa = "", r = 255, g = 0, b = 0): Promise<number> {
+        return (await this.func(`environment.create_ghost`, [x, y, r, g, b, db.str(dfa)]))[0].id;
         //return this.createEntity("ghost", x, y, 30, 30, {speed: 0.03, controller: "ai", dfa: dfa});
     }
 

@@ -638,15 +638,15 @@ $$ LANGUAGE sql;--
 
 
 -- stub
-CREATE SCHEMA IF NOT EXISTS dfa;
-CREATE OR REPLACE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) RETURNS VOID AS $$ SELECT 1 $$ LANGUAGE sql;--
+-- CREATE SCHEMA IF NOT EXISTS dfa;
+-- CREATE OR REPLACE FUNCTION dfa.setup_entity(_eid INT, _dfaname TEXT) RETURNS VOID AS $$ SELECT 1 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
 RETURNS INT AS $$
     WITH 
     entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 0.5, 0.5, 0, 0, 0.03, 'ai', _r, _g, _b)),
     dfa_setup(id) AS (SELECT dfa.setup_entity(entity.id, _dfa) FROM entity)
-    SELECT id FROM entity
+    SELECT entity.id FROM entity CROSS JOIN dfa_setup
 $$ LANGUAGE sql;--
 
 
@@ -704,6 +704,15 @@ RETURNS VOID AS $$
         entity_id = _eid1
 $$ LANGUAGE sql;--
 
+CREATE FUNCTION environment.coll_pacman_pacman(_eid1 INT, _eid2 INT)
+RETURNS VOID AS $$
+    UPDATE environment.movement_components SET 
+        ẟx = ẟx * -1,
+        ẟy = ẟy * -1
+    WHERE 
+        entity_id IN (_eid1, _eid2)
+$$ LANGUAGE sql;--
+
 CREATE FUNCTION environment.coll_pacman_pellet(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     UPDATE environment.position_components SET 
@@ -720,6 +729,7 @@ RETURNS VOID AS $$
         -- So dispatchers always need to have their name arranged in that way too.
         CASE et1.name || '_' || et2.name
         WHEN 'ghost_pacman' THEN environment.coll_ghost_pacman(_eid1, _eid2)
+        WHEN 'pacman_pacman' THEN environment.coll_pacman_pacman(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
         END
     FROM 
