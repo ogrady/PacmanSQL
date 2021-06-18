@@ -229,7 +229,7 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION dfa.eff_follow_path(_eid INT)
 RETURNS VOID AS $$
-    SELECT environment.start_towards(_eid, (SELECT POINT(position_x, position_y) FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1));
+    SELECT environment.start_towards(_eid, (SELECT POINT(position_x, position_y) FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps DESC LIMIT 1));
     --UPDATE environment.position_components 
     --SET 
     --    x = new.position_x, 
@@ -249,7 +249,7 @@ RETURNS VOID AS $$
         environment.position_components AS pc
     WHERE
         cp.entity_id = pc.entity_id AND 
-        POINT(cp.position_x, cp.position_y) <-> POINT(pc.x, pc.y) = 0 AND false
+        POINT(cp.position_x, cp.position_y) <-> POINT(pc.x, pc.y) = 0
         -- (cp.entity_id, cp.position_x, cp.position_y) = (pc.entity_id, pc.x, pc.y)
         -- id = (SELECT id FROM pathfinding.complete_paths WHERE entity_id = _eid ORDER BY steps ASC LIMIT 1)
     ;
