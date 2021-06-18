@@ -46,7 +46,7 @@ export class WebServer {
         console.log(`user ${socket.id} connected`);
 
         // create player
-        const playerId = await this.pacdb.environment.createPlayer(3,4, socket.id);
+        const playerId = await this.pacdb.environment.createPlayer({controller: socket.id});
         // fixme: network component in DB
 
 

@@ -158,3 +158,4 @@ export class PacmanDB {
 }
 
 export const str = (x: any): string => `'${x}'`;
+export const optional = (x: any): string => x === null || x === undefined ? "null" : x;

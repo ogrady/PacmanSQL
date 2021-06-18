@@ -42,8 +42,8 @@ async function main() {
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
-    await pacdb.environment.createGhost(1,1, "wandering", 121, 224, 156); //"aggressive");
-    await pacdb.environment.createGhost(9,8, "aggressive"); //"aggressive");
+    await pacdb.environment.createGhost({x: 1, y: 1, dfa: "wandering", r:121, g:224, b:156});
+    await pacdb.environment.createGhost({x: 9, y: 8, dfa: "aggressive"});
 
     const webserver = new ws.WebServer(pacdb);
     const game = new PacmanGame(pacdb, webserver, 50);
