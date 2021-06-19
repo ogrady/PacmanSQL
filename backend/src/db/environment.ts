@@ -36,7 +36,7 @@ export class Environment extends db.DBUnit {
     }
 
     private async createEntity(type: string, x: number, y: number, width: number, height: number, {ẟx = 0, ẟy = 0, speed = 0.04, controller = "ai", dfa = "", r = 100, g = 0, b = 100} = {}): Promise<number> {
-        console.log(`creating entity of type ${type} at (${x}, ${y}), of size ${width}x${height}, with movement (${ẟx}, ${ẟy}), speed ${speed} and controller ${controller}`);
+        console.log(`creating entity of type ${type} at (${x}, ${y}), of size ${width}x${height}, with movement (${ẟx}, ${ẟy}), speed ${speed} and controller '${controller}'`);
         const eid = (await this.func("environment.create_entity", [db.str(type), db.optional(x), db.optional(y), width, height, ẟx, ẟy, speed, db.str(controller)]), r, g, b)[0].create_entity;
         if(dfa) {
             this.func("dfa.setup_entity", [eid, db.str(dfa)]);
@@ -53,11 +53,14 @@ export class Environment extends db.DBUnit {
     }
 
     public async createPlayer({x, y, controller}: {x?: number, y?: number, controller: string}): Promise<number> {
+        console.log(`creating player at (${x}, ${y}) with controller '${controller}'`);
         return (await this.func(`environment.create_player`, [db.optional(x), db.optional(y), db.str(controller)]))[0].create_player;
         //return this.createEntity("pacman", x, y, 30, 30, ẟx, ẟy, 0.04, controller);
     }
 
     public async createGhost({x, y, dfa = "", r = 255, g = 0, b = 0}: {x?: number, y?: number, dfa: string, r?: number, g?: number, b?: number}): Promise<number> {
+        console.log(`creating ghost at (${x}, ${y}), with colour [${r},${g},${b}] and DFA '${dfa}'`);
+
         return (await this.func(`environment.create_ghost`, [db.optional(x), db.optional(y), r, g, b, db.str(dfa)]))[0].id;
         //return this.createEntity("ghost", x, y, 30, 30, {speed: 0.03, controller: "ai", dfa: dfa});
     }
@@ -94,7 +97,6 @@ export class Environment extends db.DBUnit {
 
         const width = Math.max(...lines.map(line => line.length));
         const height = lines.length;
-        console.log(width, height);
         if(width < 1 || height < 1) {
             throw new Error("either width or height of passed map is 0.");
         }

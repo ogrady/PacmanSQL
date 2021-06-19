@@ -606,30 +606,32 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.create_entity(_type TEXT, _x INT, _y INT, _z INT, _width FLOAT, _height FLOAT, _ẟx INT, _ẟy INT, _speed DOUBLE PRECISION, _controller TEXT, _red INT, _green INT, _blue INT)
 RETURNS INT AS $$
     WITH 
-    random_position(x, y) AS ( -- just in case! _x and _y might be specified
+    random_position(rand_x, rand_y) AS ( -- just in case! _x and _y might be specified
         SELECT 
             c.x,
             c.y
         FROM 
             environment.cells AS c 
             LEFT JOIN environment.entity_components AS pc 
-              ON (c.x, c.y) = (FLOOR(pc.x), FLOOR(pc.y)),
-            environment.entity_components AS others
+              ON (c.x, c.y) = (FLOOR(pc.x), FLOOR(pc.y))
+            -- CROSS JOIN environment.entity_components AS others
         WHERE
-            others.category != 'item' -- don't calculate distance to items
-            AND c.passable  -- only passable cells
+            --others.category != 'item'                          -- don't calculate distance to items
+            c.passable                                     -- only passable cells
             AND (pc.entity_id IS NULL OR pc.category = 'item') -- look for a cell that is empty or only has an item in it
-        GROUP BY 
-            c.x, c.y
+        --GROUP BY 
+        --    c.x, c.y
+        --ORDER BY 
+        --    SUM(POINT(c.x, c.y) <-> POINT(others.x, others.y)) * RANDOM() DESC -- try to get a position that is far away from existing entities, but also factor in randomness
         ORDER BY 
-            SUM(POINT(c.x, c.y) <-> POINT(others.x, others.y)) * RANDOM() DESC -- try to get a position that is far away from existing entities, but also factor in randomness
+            RANDOM()
         LIMIT 1
     ),
     new_entity(eid) AS (
         INSERT INTO environment.entities(type) VALUES ('entity') RETURNING id
     ),
     pc AS (
-        INSERT INTO environment.position_components(entity_id, x, y, z) (VALUES ((SELECT eid FROM new_entity), (SELECT COALESCE(_x, rp.x) FROM random_position AS rp), (SELECT COALESCE(_y, rp.y) FROM random_position AS rp), _z))
+        INSERT INTO environment.position_components(entity_id, x, y, z) (VALUES ((SELECT eid FROM new_entity), (SELECT COALESCE(_x, rand_x) FROM random_position), (SELECT COALESCE(_y, rand_y) FROM random_position), _z))
     ),
     mc AS (
         INSERT INTO environment.movement_components(entity_id, ẟx, ẟy, speed) (VALUES ((SELECT eid FROM new_entity), _ẟx, _ẟy, _speed))

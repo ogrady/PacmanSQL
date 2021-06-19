@@ -55,7 +55,6 @@ export class WebServer {
             console.log(`disconnecting user ${socket.id}: ${reason}`);
             const eid = await this.pacdb.environment.destroyPlayer(socket.id);
             delete this.clients[socket.id];
-            console.log(eid);
             this.broadcast("destroy-entity", {id: eid});
         });
 

@@ -42,8 +42,9 @@ async function main() {
     const pacdb = await db.PacmanDB.create();
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMap(pacdb, "./data/map.txt");
-    await pacdb.environment.createGhost({x: 1, y: 1, dfa: "wandering", r:121, g:224, b:156});
-    await pacdb.environment.createGhost({x: 9, y: 8, dfa: "aggressive"});
+    //await pacdb.environment.createGhost({x: 1, y: 1, dfa: "wandering", r:121, g:224, b:156});
+    await pacdb.environment.createGhost({dfa: "wandering", r:121, g:224, b:156});
+    //await pacdb.environment.createGhost({x: 9, y: 8, dfa: "aggressive"});
 
     const webserver = new ws.WebServer(pacdb);
     const game = new PacmanGame(pacdb, webserver, 50);
@@ -59,12 +60,9 @@ async function test() {
     /*await pacdb.pathfinding.initSearch(1, [1,1], [4,4]);
     for(let i = 0; i < 10; i++) {
         const x = await pacdb.pathfinding.tickPathsearch();
-        console.log(x);
     }*/
     /*
     const res = await pacdb.environment.get("SELECT * FROM dfa.edges");
-    console.log("HERE GOES")
-    console.log(res);
     console.log(await pacdb.environment.getSingleValue("SELECT * FROM dfa.edges"));
     */
 }
