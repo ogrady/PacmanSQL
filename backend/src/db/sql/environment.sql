@@ -596,14 +596,16 @@ CREATE FUNCTION environment.update_positions()
 RETURNS VOID AS $$
     WITH upd(entity_id, new_x, new_y) AS (
         SELECT 
-            ec.entity_id,
-            ROUND((ec.x + ec.ẟx)::numeric, 2), -- https://stackoverflow.com/questions/13113096/how-to-round-an-average-to-2-decimal-places-in-postgresql/13113623#comment17829941_13113623
-            ROUND((ec.y + ec.ẟy)::numeric, 2)
+            pc.entity_id,
+            ROUND((pc.x + mc.ẟx)::numeric, 2), -- https://stackoverflow.com/questions/13113096/how-to-round-an-average-to-2-decimal-places-in-postgresql/13113623#comment17829941_13113623
+            ROUND((pc.y + mc.ẟy)::numeric, 2)
         FROM
-            environment.entity_components AS ec 
+            environment.position_components AS pc
+            JOIN environment.movement_components AS mc
+              ON pc.entity_id = mc.entity_id
             JOIN environment.cells AS c 
-              ON ROUND(ec.x + ec.ẟx + 0) = c.x AND 
-                 ROUND(ec.y + ec.ẟy + 0) = c.y
+              ON ROUND(pc.x + mc.ẟx + 0) = c.x AND 
+                 ROUND(pc.y + mc.ẟy + 0) = c.y
         WHERE 
             c.passable
     )
