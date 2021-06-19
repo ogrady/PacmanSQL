@@ -140,7 +140,7 @@ export class Environment extends db.DBUnit {
     }
 
     public async handleCollisions(): Promise<void> {
-        return await this.exec("SELECT environment.dispatch_collision_handler(eid1, eid2) FROM environment.collisions");
+        return await this.exec("SELECT * FROM environment.handle_collisions()");//"SELECT environment.dispatch_collision_handler(eid1, eid2) FROM environment.collisions");
     }
 
     public async getStates(): Promise<EntityState[]> {

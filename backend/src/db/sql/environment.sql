@@ -538,15 +538,32 @@ CREATE VIEW environment.visual_map(content) AS (
 
 -- entity ids of colliding entities, where
 -- eid1 is the entity with smaller typename (to make defining handler functions easier)
-CREATE VIEW environment.collisions(eid1, eid2) AS (
+CREATE VIEW environment.collisions(eid1, eid2, type1, type2) AS (
+    WITH bodies(entity_id, bounding_box, type_id, type_name) AS (
+        SELECT
+            pc.entity_id,
+            BOX(POINT(pc.x, pc.y), POINT(pc.x + ec.width, pc.y + ec.height)),
+            tc.type_id,
+            et.name
+        FROM
+            environment.position_components AS pc
+            JOIN environment.extent_components AS ec
+              ON pc.entity_id = ec.entity_id
+            JOIN environment.type_components AS tc
+              ON pc.entity_id = tc.entity_id
+            JOIN environment.entity_types AS et
+              ON tc.type_id = et.id
+    )
     SELECT 
-        CASE WHEN ec1.type < ec2.type THEN ec1.entity_id ELSE ec2.entity_id END,
-        CASE WHEN ec1.type < ec2.type THEN ec2.entity_id ELSE ec1.entity_id END
+    CASE WHEN this.type_name < that.type_name THEN this.entity_id ELSE that.entity_id END,
+    CASE WHEN this.type_name < that.type_name THEN that.entity_id ELSE this.entity_id END,
+    CASE WHEN this.type_name < that.type_name THEN this.type_name ELSE that.type_name END,
+    CASE WHEN this.type_name < that.type_name THEN that.type_name ELSE this.type_name END
     FROM 
-        environment.entity_components AS ec1
-        JOIN environment.entity_components AS ec2
-          ON BOX(POINT(ec1.x, ec1.y),POINT(ec1.x + ec1.width, ec1.y + ec1.height)) && BOX(POINT(ec2.x, ec2.y),POINT(ec2.x + ec2.width, ec2.y + ec2.height))
-          AND ec1.entity_id < ec2.entity_id -- <> removes collisions with self, < removes duplicate collisions
+        bodies AS this
+        JOIN bodies AS that 
+          ON this.bounding_box && that.bounding_box
+             AND this.entity_id < that.entity_id -- <> removes collisions with self, < removes duplicate collisions
 );--
 
 ---------------------------------------------------------------
@@ -744,28 +761,23 @@ RETURNS VOID AS $$
         entity_id = _eid2
 $$ LANGUAGE sql;--
 
-CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _eid2 INT)
+CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _type1 TEXT, _eid2 INT, _type2 TEXT)
 RETURNS VOID AS $$
     SELECT
         -- eid1 and eid2 are lexicographically ordered on their type names.
         -- So dispatchers always need to have their name arranged in that way too.
-        CASE et1.name || '_' || et2.name
+        CASE _type1 || '_' || _type2
         WHEN 'ghost_pacman' THEN environment.coll_ghost_pacman(_eid1, _eid2)
         WHEN 'pacman_pacman' THEN environment.coll_pacman_pacman(_eid1, _eid2)
         WHEN 'pacman_pellet' THEN environment.coll_pacman_pellet(_eid1, _eid2)
         END
-    FROM 
-        environment.type_components AS ec1
-        JOIN environment.entity_types AS et1
-          ON ec1.type_id = et1.id,
-        environment.type_components AS ec2
-        JOIN environment.entity_types AS et2
-          ON ec2.type_id = et2.id
-    WHERE 
-        ec1.entity_id = _eid1
-        AND ec2.entity_id = _eid2
 $$ LANGUAGE sql STABLE;--
 
+-- this function conveniently handles all open collisions
+CREATE FUNCTION environment.handle_collisions()
+RETURNS VOID AS $$
+    SELECT environment.dispatch_collision_handler(eid1, type1, eid2, type2) FROM environment.collisions
+$$ LANGUAGE sql;--
 
 ;
 
