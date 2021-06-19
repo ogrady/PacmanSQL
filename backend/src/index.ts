@@ -21,12 +21,12 @@ class PacmanGame extends g.Game {
         this.webserver = webserver;
 
         this.addComponent(new gc(20, async game => await game.pacdb.pathfinding.tickPathsearch()));
-        this.addComponent(new gc(20, async game => await game.pacdb.dfa.tick()));
-        this.addComponent(new gc(20, async game => {
+        this.addComponent(new gc(45, async game => await game.pacdb.dfa.tick()));
+        this.addComponent(new gc(40, async game => {
             await game.pacdb.environment.updatePositions();
             await game.pacdb.environment.handleCollisions();
         }));
-        this.addComponent(new gc(50, async game => {
+        this.addComponent(new gc(40, async game => {
             const updates = await game.pacdb.environment.getEntityDelta();
             if(updates.length > 0) {
                 await game.pacdb.environment.checkpoint();
@@ -44,7 +44,26 @@ async function main() {
     await reader.readMap(pacdb, "./data/map.txt");
     //await pacdb.environment.createGhost({x: 1, y: 1, dfa: "wandering", r:121, g:224, b:156});
     await pacdb.environment.createGhost({dfa: "wandering", r:121, g:224, b:156});
-    //await pacdb.environment.createGhost({x: 9, y: 8, dfa: "aggressive"});
+    await pacdb.environment.createGhost({x: 9, y: 8, dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
+    await pacdb.environment.createGhost({dfa: "aggressive"});
 
     const webserver = new ws.WebServer(pacdb);
     const game = new PacmanGame(pacdb, webserver, 50);

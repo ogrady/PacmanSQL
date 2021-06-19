@@ -5,8 +5,9 @@ strict digraph aggressive {
     
     thinking -> searching [label="pacman present;pathsearch nearest"]
     searching -> chasing [label="path ready;"]
+    searching -> thinking [label="long idle;"]
     chasing -> chasing [label="path ready;follow path",weight=2]
-    chasing -> thinking [label=";"]
+    chasing -> thinking [label="rested;"]
     
 }
 

@@ -720,7 +720,8 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.coll_pacman_ghost(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     UPDATE environment.position_components SET 
-        x = -42
+        x = -100,
+        y = -100
     WHERE 
         entity_id = _eid1
 $$ LANGUAGE sql;--

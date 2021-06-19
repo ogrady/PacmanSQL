@@ -161,8 +161,8 @@ RETURNS BOOLEAN AS $$
     FROM 
         environment.entity_components AS ec
         JOIN environment.cells AS c
-          --ON c.x BETWEEN ec.x AND ec.x + ec.width OR
-          --   c.y BETWEEN ec.y AND ec.y + ec.height
+          --ON c.x BETWEEN ec.x + ec.ẟx AND ec.x + ec.ẟx + ec.width OR
+          --   c.y BETWEEN ec.y + ec.ẟy AND ec.y + ec.ẟy + ec.height
           ON ROUND(ec.x + ec.ẟx + 0.0) = c.x AND 
              ROUND(ec.y + ec.ẟy + 0.0) = c.y
     WHERE 
@@ -259,6 +259,21 @@ RETURNS VOID AS $$
     -- WHERE 
     --     entity_id = _eid
     --     AND -- position is same
+$$ LANGUAGE sql;--
+
+
+-- makes a ghost with id EID wait for around (10ms * RANDOM())
+-- useful to "unclog" congestions of hunting ghosts that have all ended up on the same position
+CREATE FUNCTION dfa.cond_rested(_eid INT)
+RETURNS BOOLEAN AS $$
+    SELECT EXTRACT(EPOCH FROM NOW() - ec.last_update) > RANDOM() * 100 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
+$$ LANGUAGE sql;--
+
+
+-- check if a ghost has had its last update more than 5 seconds ago. Useful when a ghost is stuck in path finding for invalid Pacmen
+CREATE FUNCTION dfa.cond_long_idle(_eid INT)
+RETURNS BOOLEAN AS $$
+    SELECT EXTRACT(EPOCH FROM (NOW() - ec.last_update)) > 5 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
 $$ LANGUAGE sql;--
 
 

@@ -97,8 +97,8 @@ CREATE FUNCTION pathfinding.init_entity_to_entity_search(_eid1 INT, _eid2 INT)
 RETURNS VOID AS $$
     SELECT pathfinding.init_search(
         _eid1, 
-        (SELECT POINT(FLOOR(x),FLOOR(y)) FROM environment.position_components WHERE entity_id = _eid1),
-        (SELECT POINT(FLOOR(x),FLOOR(y)) FROM environment.position_components WHERE entity_id = _eid2)
+        (SELECT POINT(ROUND(x),ROUND(y)) FROM environment.position_components WHERE entity_id = _eid1),
+        (SELECT POINT(ROUND(x),ROUND(y)) FROM environment.position_components WHERE entity_id = _eid2)
     );
 $$ LANGUAGE sql;--
 
