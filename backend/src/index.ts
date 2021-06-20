@@ -40,6 +40,9 @@ class PacmanGame extends g.Game {
 
 async function main() {
     const pacdb = await db.PacmanDB.create();
+
+    pacdb.mapgeneration.exec("SELECT SETSEED(0.5)");
+
     await reader.readDFAs(pacdb, "./data/dfa/ghosts.gviz")
     await reader.readMapModules(pacdb, "./data/modules.txt");
     await pacdb.mapgeneration.generateMap(4);

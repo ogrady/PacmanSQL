@@ -380,13 +380,6 @@ RETURNS VOID AS $$
     ;
 $$ LANGUAGE sql;--
 
--- the nodejs pg library seems to have trouble with the "REFRESH ..." statement
--- (it doesn't seem to get executed.) So I am wrapping it in a function instead to make it callable...
-CREATE FUNCTION mapgen.refresh_edge_compatibility()
-RETURNS VOID AS $$
-    REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
-$$ LANGUAGE sql;--
-
 -- generates a map that is used for playing Pacman where tiles don't
 -- have a tile id but are either passable or unpassable
 CREATE FUNCTION mapgen.generate_pacman_map(_size INT)

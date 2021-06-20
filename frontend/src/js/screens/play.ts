@@ -114,7 +114,13 @@ class PlayScreen extends PacScreen {
                 }
             }
 
-            map.walls.map(wall => me.game.world.addChild(new fe.Wall(wall.coordinates.map(([x,y]) => [x * w, y * h]))));
+            map.walls.map(wall => {
+                try {
+                    me.game.world.addChild(new fe.Wall(wall.coordinates.map(([x,y]) => [x * w, y * h])));
+                } catch(e) {
+                    console.error(e);
+                }
+            });
         });
 
         this.socket.on("entities", this.processEntities.bind(this));

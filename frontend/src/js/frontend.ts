@@ -202,7 +202,7 @@ export class Wall extends me.Renderable {
         this.anchorPoint = new me.Vector2d(0,0);
         const vectors = points.map(xy => new me.Vector2d(xy[0], xy[1]));
         this.polygon = new me.Polygon(sx, sy, vectors);
-        //console.log(`Creating wall with points`, points);
+        console.log(`Creating wall with points`, points);
     }
 
     public draw(renderer: any) {

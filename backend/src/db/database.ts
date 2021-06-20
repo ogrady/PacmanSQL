@@ -108,6 +108,9 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
 
     public async get(sql: string): Promise<any[]> {
         const res = await this.run(sql);
+        if(res === undefined) {
+            throw new Error(`res is undefined for get(${sql})`);
+        }
         return res.rowCount === 0 ? [] : res.rows;
     }
 

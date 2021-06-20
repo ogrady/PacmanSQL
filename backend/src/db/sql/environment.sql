@@ -404,7 +404,7 @@ grid(x, y, passable, component_id) AS (
 ),
 -- one coordinate per component
 start_coordinates(x, y, component_id) AS (
-    SELECT DISTINCT ON (component_id)
+    (SELECT DISTINCT ON (component_id)
         x, 
         y, 
         component_id
@@ -413,7 +413,20 @@ start_coordinates(x, y, component_id) AS (
     WHERE 
         component_id IS NOT NULL
     ORDER BY 
-        component_id, y ASC, x ASC -- most bottom-right cell. This is required, as using a cell of the upper-left part would go around the OUTSIDE of the outermost shape. We need it to go around the INSIDE.
+        component_id, y ASC, x ASC) -- most bottom-right cell. This is required, as using a cell of the upper-left part would go around the OUTSIDE of the outermost shape. We need it to go around the INSIDE (see second statement)
+
+    UNION ALL
+
+    (SELECT DISTINCT ON (component_id)
+        x, 
+        y, 
+        -component_id
+    FROM
+        grid
+    WHERE 
+        component_id IS NOT NULL
+    ORDER BY 
+        component_id, y DESC, x DESC) -- ...but with some randomly generated maps we also want the outside. So as a quick workaround, we select each component twice and make them "unique" by giving one of them a negative ID
 ),
 -- offsets to make a coordinate into a square
 square_offsets(x, y) AS (
@@ -469,20 +482,20 @@ marching_squares↺(iteration, x, y, component_id, start) AS (
             iteration,
             origin_x,
             origin_y,
-            THE(component_id),
+            component_id,
             string_agg(CASE WHEN passable THEN '□' ELSE '■' END ,'' ORDER BY y,x), -- yes, y,x is correct
             start
         FROM 
             squares
         GROUP BY 
-            origin_x, origin_y, start, iteration
+            component_id, origin_x, origin_y, start, iteration
     )
     SELECT 
-        hashes.iteration + 1        AS iteration,
-        grid.x                      AS x,
-        grid.y                      AS y,
-        hashes.component_id         AS component_id,
-        hashes.start                AS start
+        hashes.iteration + 1 AS iteration,
+        grid.x               AS x,
+        grid.y               AS y,
+        hashes.component_id  AS component_id,
+        hashes.start         AS start
     FROM 
         hashes
         JOIN moves
