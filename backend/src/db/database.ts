@@ -119,7 +119,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
             console.log(sql);
             console.log("-------------")
         }
-        return this.db.inner.query(sql);
+        return this.db.inner.query(sql).catch(error => console.error("DB ERROR", error));
     }
 
     public async func(fname: string, args: any[] = []): Promise<any> {
@@ -131,23 +131,27 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
 import * as env from "./environment";
 import { DFA } from "./dfa";
 import * as pf from "./pathfinding";
+import * as mg from "./mapgeneration";
 
 export class PacmanDB {
     readonly environment: env.Environment;
     readonly dfa: DFA;
     readonly pathfinding: pf.Pathfinding;
+    readonly mapgeneration: mg.Mapgeneration;
 
     private constructor() {
         const connection = new PostgresqlConnection();
         this.environment = new env.Environment(connection);
         this.pathfinding = new pf.Pathfinding(connection);
         this.dfa = new DFA(connection, this.pathfinding);
+        this.mapgeneration = new mg.Mapgeneration(connection);
     }
 
     private async init() {
         await this.environment.init();
         await this.pathfinding.init();
         await this.dfa.init();
+        await this.mapgeneration.init();
     }
 
     public static async create(): Promise<PacmanDB> {

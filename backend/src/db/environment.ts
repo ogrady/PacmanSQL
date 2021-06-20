@@ -105,18 +105,7 @@ export class Environment extends db.DBUnit {
         for(const [x,y] of blocked) {
             await this.run(`UPDATE environment.cells SET passable = FALSE WHERE (x,y) = (${x},${y})`);
         }
-        this.run(`SELECT environment.create_pellet(c.x, c.y) FROM environment.cells AS c WHERE c.passable`);
-        this.run(`
-            DELETE FROM
-                environment.entities AS e
-            USING
-                environment.cells AS c,
-                environment.position_components AS pc
-            WHERE
-                e.id = pc.entity_id AND
-                (pc.x, pc.y) = (c.x, c.y) AND
-                NOT c.passable
-        `);
+        this.func("environment.populate_with_pellets", []);
     }
 
     public async getBlockedAreas(): Promise<t.Coordinate[]>  {

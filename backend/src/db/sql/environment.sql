@@ -413,7 +413,7 @@ start_coordinates(x, y, component_id) AS (
     WHERE 
         component_id IS NOT NULL
     ORDER BY 
-        component_id, y DESC, x DESC -- most bottom-right cell. This is required, as using a cell of the upper-left part would go around the OUTSIDE of the outermost shape. We need it to go around the INSIDE.
+        component_id, y ASC, x ASC -- most bottom-right cell. This is required, as using a cell of the upper-left part would go around the OUTSIDE of the outermost shape. We need it to go around the INSIDE.
 ),
 -- offsets to make a coordinate into a square
 square_offsets(x, y) AS (
@@ -727,6 +727,22 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.create_pellet(_x INT, _y INT)
 RETURNS INT AS $$
     SELECT environment.create_entity('pellet', _x, _y, 0, 0.3, 0.3, 0, 0, 0.00, 'none', 255, 255, 255) AS id
+$$ LANGUAGE sql;--
+
+
+CREATE FUNCTION environment.populate_with_pellets()
+RETURNS VOID AS $$
+        SELECT environment.create_pellet(c.x, c.y) FROM environment.cells AS c WHERE c.passable;
+        DELETE FROM
+            environment.entities AS e
+        USING
+            environment.cells AS c,
+            environment.position_components AS pc
+        WHERE
+            e.id = pc.entity_id AND
+            (pc.x, pc.y) = (c.x, c.y) AND
+            NOT c.passable
+        ;
 $$ LANGUAGE sql;--
 
 

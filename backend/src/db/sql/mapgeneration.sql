@@ -9,7 +9,8 @@ BEGIN
         RAISE EXCEPTION 'THE used on an inconsistent list. Expected consistent %, but the list also contained %.', acc, x ;
     END IF;
     RETURN x;
-END $$ LANGUAGE PLPGSQL STRICT;-- STRICT ignores null values
+    -- STRICT ignores null values
+END $$ LANGUAGE PLPGSQL STRICT;-- 
 
 CREATE OR REPLACE AGGREGATE the(anyelement)
 (
@@ -331,7 +332,7 @@ RETURNS INT AS $$
 $$ LANGUAGE sql;--
 
 -- creates a quadractic map of size _size x _size (counted in modules, not tiles)
-CREATE FUNCTION mapgen.generate_map(_size INT) 
+CREATE FUNCTION mapgen.generate_module_map(_size INT) 
 RETURNS TABLE(mid INT, r INT) AS $$
     WITH RECURSIVE progress(mid, remaining) AS (
         SELECT mapgen.expand_map(), _size 
@@ -341,6 +342,62 @@ RETURNS TABLE(mid INT, r INT) AS $$
     SELECT mid, remaining FROM progress
 $$ LANGUAGE sql;--
 
+-- generates an actual map that consists of triples of (x,y,t) where t is the ID of a tile
+CREATE FUNCTION mapgen.generate_map(_size INT)
+RETURNS VOID AS $$
+    DELETE FROM mapgen.module_map;
+    INSERT INTO mapgen.module_map(x,y,module_id) (VALUES (0,0,3)); -- SEED
+    SELECT mapgen.generate_module_map(_size);
+
+    INSERT INTO mapgen.map(x, y, tile_id)
+    WITH tiles(x, y, tile_id, priority) AS (
+        SELECT 
+            mm.x * 3 + mc.x + 1 AS x,
+            mm.y * 3 + mc.y + 1 AS y,
+            mc.tile_id,
+            1
+        FROM 
+            mapgen.module_map AS mm 
+            JOIN mapgen.module_contents AS mc
+                ON mc.module_id = mm.module_id
+        UNION ALL
+        SELECT 
+            w.x,
+            h.y,
+            3,
+            2 -- priority. Whatever is already taken up by the actual tiles has high priority (1), map borders are only considered if nothing else takes up that space
+        FROM 
+            generate_series(0, (SELECT MAX(x) * 3 + 4 FROM mapgen.module_map)) AS w(x),
+            generate_series(0, (SELECT MAX(y) * 3 + 4 FROM mapgen.module_map)) AS h(y)
+    )
+    SELECT DISTINCT ON (x,y) 
+        x, y, tile_id
+    FROM 
+        tiles
+    ORDER BY 
+        x,y,priority
+    ;
+$$ LANGUAGE sql;--
+
+-- generates a map that is used for playing Pacman where tiles don't
+-- have a tile id but are either passable or unpassable
+CREATE FUNCTION mapgen.generate_pacman_map(_size INT)
+RETURNS VOID AS $$
+    SELECT mapgen.generate_map(_size);
+    DELETE FROM environment.cells;
+    INSERT INTO environment.cells(x, y, passable)
+        SELECT 
+            x,
+            y,
+            tile_id = 1
+        FROM 
+            mapgen.map
+    ;
+    SELECT environment.populate_with_pellets();
+    -- REFRESH MATERIALIZED VIEW environment.compound_walls;
+
+
+$$ LANGUAGE sql;--
 
 ----- TESTING
 INSERT INTO mapgen.tiles(value) (VALUES
@@ -352,7 +409,7 @@ insert into mapgen.compatible_tiles(this_id, that_id, frequency) (values
     (2, 2, 1)  -- ☒ - ☒
 );
 
-INSERT INTO mapgen.modules(id) SELECT x FROM generate_series(1, 12) AS xs(x);
+INSERT INTO mapgen.modules(id) SELECT x FROM generate_series(1, 16) AS xs(x);
 
 INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES 
     ( 1, 0, 0, 2), ( 1, 1, 0, 1), ( 1, 2, 0, 2), -- vertical corridor
@@ -390,54 +447,43 @@ INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES
     (11, 0, 2, 2), (11, 1, 2, 1), (11, 2, 2, 2),
     (12, 0, 0, 2), (12, 1, 0, 1), (12, 2, 0, 2), -- T left
     (12, 0, 1, 1), (12, 1, 1, 1), (12, 2, 1, 2),
-    (12, 0, 2, 2), (12, 1, 2, 1), (12, 2, 2, 2)
+    (12, 0, 2, 2), (12, 1, 2, 1), (12, 2, 2, 2),
+
+    (13, 0, 0, 1), (13, 1, 0, 1), (13, 2, 0, 1), -- ▖ lower left
+    (13, 0, 1, 1), (13, 1, 1, 1), (13, 2, 1, 1),
+    (13, 0, 2, 2), (13, 1, 2, 1), (13, 2, 2, 1),
+
+    (14, 0, 0, 1), (14, 1, 0, 1), (14, 2, 0, 2), -- ▝ upper right
+    (14, 0, 1, 1), (14, 1, 1, 1), (14, 2, 1, 1),
+    (14, 0, 2, 1), (14, 1, 2, 1), (14, 2, 2, 1),
+
+    (15, 0, 0, 1), (15, 1, 0, 1), (15, 2, 0, 2), -- ▘ upper left
+    (15, 0, 1, 1), (15, 1, 1, 1), (15, 2, 1, 1),
+    (15, 0, 2, 1), (15, 1, 2, 1), (15, 2, 2, 1),
+
+    (16, 0, 0, 1), (16, 1, 0, 1), (16, 2, 0, 1), -- ▗ lower right
+    (16, 0, 1, 1), (16, 1, 1, 1), (16, 2, 1, 1),
+    (16, 0, 2, 1), (16, 1, 2, 1), (16, 2, 2, 2)
+
+
 );
 
+REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
 
-insert into mapgen.module_map(x,y,module_id) (VALUES (0,0,3));
+
+--insert into mapgen.module_map(x,y,module_id) (VALUES (0,0,3));
 --insert into mapgen.module_map(x,y,module_id) (VALUES (0,1,1));
 --insert into mapgen.module_map(x,y,module_id) (VALUES (0,2,5));
 --insert into mapgen.module_map(x,y,module_id) (VALUES (1,0,7));
 
-REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
+
 
 ----- FUNCTEST
 
-select setseed(0.6);
-\timing on
-SELECT COUNT(*) FROM mapgen.generate_map(10);
+--select setseed(0.6);
 
-
-INSERT INTO mapgen.map(x, y, tile_id)
-WITH tiles(x, y, tile_id, priority) AS (
-    SELECT 
-        mm.x * 3 + mc.x + 1 AS x,
-        mm.y * 3 + mc.y + 1 AS y,
-        mc.tile_id,
-        1
-    FROM 
-        mapgen.module_map AS mm 
-        JOIN mapgen.module_contents AS mc
-            ON mc.module_id = mm.module_id
-    UNION ALL
-    SELECT 
-        w.x,
-        h.y,
-        3,
-        2 -- priority. Whatever is already taken up by the actual tiles has high priority (1), map borders are only considered if nothing else takes up that space
-    FROM 
-        generate_series(0, (SELECT MAX(x) * 3 + 4 FROM mapgen.module_map)) AS w(x),
-        generate_series(0, (SELECT MAX(y) * 3 + 4 FROM mapgen.module_map)) AS h(y)
-)
-SELECT DISTINCT ON (x,y) 
-    x, y, tile_id
-FROM 
-    tiles
-ORDER BY 
-    x,y,priority
-;
-select * from mapgen.map_pretty;
-select * from mapgen.map order by x,y;
+--SELECT mapgen.generate_map(10);
+--select * from mapgen.map_pretty;
 
 --select * from mapgen.map_pretty;
 --SELECT mapgen.expand_map();
