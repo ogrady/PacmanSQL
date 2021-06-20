@@ -152,6 +152,7 @@ CREATE TABLE environment.type_components(
 
 -- components 
 -- TRIGGERS ARE GENERATED AUTOMATICALLY!
+-- Comment any column with "-- WATCHED" to generate a trigger that updates last_update
 CREATE TABLE environment.extent_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
@@ -200,11 +201,18 @@ CREATE TABLE environment.controller_components(
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
+CREATE TABLE environment.score_components(
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    score       INT,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
+);--
+
 
 ---------------------------------------------------------------
 -- VIEWS
 ---------------------------------------------------------------
-CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, center_x, center_y, ẟx, ẟy, speed, type, category, red, green, blue, last_update) AS (
+CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, center_x, center_y, ẟx, ẟy, speed, type, category, red, green, blue, score, last_update) AS (
         SELECT 
             e.id,
             pc.x, 
@@ -222,6 +230,7 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
             col.red,
             col.green,
             col.blue,
+            score.score,
             GREATEST(pc.last_update, mc.last_update, tc.last_update, ext.last_update, col.last_update)
         FROM 
             environment.entities AS e 
@@ -237,6 +246,8 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
               ON ext.entity_id = e.id
             LEFT JOIN environment.colour_components AS col 
               ON col.entity_id = e.id
+            LEFT JOIN environment.score_components AS score 
+              ON score.entity_id = e.id
 );--
 
 
@@ -666,6 +677,9 @@ RETURNS INT AS $$
     ),
     col AS (
         INSERT INTO environment.colour_components(entity_id, red, green, blue) (VALUES ((SELECT eid FROM new_entity), _red, _green, _blue))
+    ),
+    score AS (
+        INSERT INTO environment.score_components(entity_id, score) (VALUES ((SELECT eid FROM new_entity), 0))
     )
     SELECT eid FROM new_entity    
 $$ LANGUAGE sql;--
@@ -761,6 +775,11 @@ RETURNS VOID AS $$
         y = -10
     WHERE 
         entity_id = _eid2
+    ;
+    UPDATE environment.score_components SET 
+        score = score + 1 
+    WHERE 
+        entity_id = _eid1
 $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.dispatch_collision_handler(_eid1 INT, _type1 TEXT, _eid2 INT, _type2 TEXT)

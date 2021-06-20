@@ -264,16 +264,18 @@ $$ LANGUAGE sql;--
 
 -- makes a ghost with id EID wait for around (10ms * RANDOM())
 -- useful to "unclog" congestions of hunting ghosts that have all ended up on the same position
+-- Ghosts who have never moved before always return TRUE on this
 CREATE FUNCTION dfa.cond_rested(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT EXTRACT(EPOCH FROM NOW() - ec.last_update) > RANDOM() * 100 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
+    SELECT COALESCE(EXTRACT(EPOCH FROM NOW() - ec.last_update) > RANDOM() * 100, TRUE) FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
 $$ LANGUAGE sql;--
 
 
--- check if a ghost has had its last update more than 5 seconds ago. Useful when a ghost is stuck in path finding for invalid Pacmen
+-- check if a ghost has had its last update more than 20 seconds ago. Useful when a ghost is stuck in path finding for invalid Pacmen
+-- WARNING: ghosts can get stuck if they have never moved before, because then this condition returns NULL
 CREATE FUNCTION dfa.cond_long_idle(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT EXTRACT(EPOCH FROM (NOW() - ec.last_update)) > 5 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
+    SELECT EXTRACT(EPOCH FROM (NOW() - ec.last_update)) > 20 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
 $$ LANGUAGE sql;--
 
 
