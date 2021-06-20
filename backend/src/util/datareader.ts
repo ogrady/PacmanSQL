@@ -72,6 +72,54 @@ export async function readGameData(pacdb: db.PacmanDB, file: string): Promise<vo
     await pacdb.environment.setMap(fs.readFileSync(file, "utf8"));
 }
 
+type Modrow = [number,number,number];
+type Module = [number,number,number][]
+
+export async function readMapModules(pacdb: db.PacmanDB, file: string): Promise<void> {
+    const contents = fs.readFileSync(file, "utf8").split("\n").map(line => line.trim().split(""));
+
+    if(contents.length !== 3) {
+        throw new Error(`expected exactly 3 lines in the modules file, but found ${contents.length}`);
+    }
+
+    if(contents[0].length !== contents[1].length || contents[1].length !== contents[2].length) {
+        throw new Error(`all lines in the modules file must be of equal length after trimming, but they are ${contents.map(line => line.length)}`);
+    }
+
+    const tiles = {
+        "■": 2,
+        "□": 1
+    };
+
+    const modules: Module[] = [];
+    while(contents[0].length > 0) {
+        const module: Module = [];
+        for(let x = 0; x < 3; x++) {
+            for(let y = 0; y < 3; y++) {
+                const tile = contents[y].shift();
+                if(tile === undefined) {
+                    throw new Error(`expected semantic character in line ${y}, but found undefined instead`);
+                }
+                module.push([x, y, tiles[tile]]);
+            }
+        }
+        for(let i = 0; i < 3; i++) {
+            const padding = contents[i].shift();
+            if(padding !== " " && padding !== undefined) { // undefined for last module
+                throw new Error(`found semantic character while removing spacers in row ${i}: '${padding}'`);
+            }
+        }
+        modules.push(module);
+    }
+
+    console.log(`reading ${modules.length} modules from file`);
+    for(const module of modules) {
+        await pacdb.mapgeneration.addModule(module);
+    }
+    console.log("recomputing edge compatibilities");
+    await pacdb.mapgeneration.refreshCompatibility();
+}
+
 /*
         // effects
         const effects: string[] = (await this.exec("SELECT fname FROM dfa.effects")).rows

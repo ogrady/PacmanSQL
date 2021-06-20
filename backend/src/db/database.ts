@@ -1,12 +1,13 @@
 import * as pg from "pg";
 import * as fs from "fs";
 
-const DEBUG = false;
+export let DEBUG = false;
 
 abstract class DBConnection {
     public inner: any;
     public abstract getLastId(): number;
     public abstract getSingleValue<T>(query: string): T;
+    public verbose: boolean = false;
 }
 
 export class PostgresqlConnection extends DBConnection {
@@ -19,6 +20,7 @@ export class PostgresqlConnection extends DBConnection {
           password: "pacman",
           port: 5432,
         });
+        this.verbose = false;
     }
 
     public printQueryResult(sql: string): void {
@@ -115,7 +117,7 @@ export class DBUnit { // in an attempt to not call it DBComponent to not confuse
     }
 
     public run(sql: string): Promise<any> {
-        if(DEBUG) {
+        if(this.db.verbose) {
             console.log(sql);
             console.log("-------------")
         }
@@ -138,13 +140,15 @@ export class PacmanDB {
     readonly dfa: DFA;
     readonly pathfinding: pf.Pathfinding;
     readonly mapgeneration: mg.Mapgeneration;
+    private connection: DBConnection;
 
     private constructor() {
-        const connection = new PostgresqlConnection();
-        this.environment = new env.Environment(connection);
-        this.pathfinding = new pf.Pathfinding(connection);
-        this.dfa = new DFA(connection, this.pathfinding);
-        this.mapgeneration = new mg.Mapgeneration(connection);
+        const conn = new PostgresqlConnection();;
+        this.connection = conn;
+        this.environment = new env.Environment(conn);
+        this.pathfinding = new pf.Pathfinding(conn);
+        this.dfa = new DFA(conn, this.pathfinding);
+        this.mapgeneration = new mg.Mapgeneration(conn);
     }
 
     private async init() {
@@ -158,6 +162,10 @@ export class PacmanDB {
         const instance: PacmanDB = new PacmanDB();
         await instance.init();
         return instance;
+    }
+
+    public setVerbose(b: boolean): void {
+        this.connection.verbose = b;
     }
 }
 
