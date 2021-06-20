@@ -272,10 +272,16 @@ $$ LANGUAGE sql;--
 
 
 -- check if a ghost has had its last update more than 20 seconds ago. Useful when a ghost is stuck in path finding for invalid Pacmen
--- WARNING: ghosts can get stuck if they have never moved before, because then this condition returns NULL
+-- Ghosts who have never moved before always return TRUE on this
 CREATE FUNCTION dfa.cond_long_idle(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT EXTRACT(EPOCH FROM (NOW() - ec.last_update)) > 20 FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
+    SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - ec.last_update)) > 20, TRUE) FROM environment.entity_components AS ec WHERE ec.entity_id = _eid
+$$ LANGUAGE sql;--
+
+
+CREATE FUNCTION dfa.eff_touch(_eid INT)
+RETURNS VOID AS $$
+    SELECT environment.touch(_eid);
 $$ LANGUAGE sql;--
 
 

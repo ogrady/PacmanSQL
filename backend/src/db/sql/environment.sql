@@ -192,7 +192,6 @@ CREATE TABLE environment.movement_components(
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
-
 CREATE TABLE environment.controller_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
@@ -205,6 +204,13 @@ CREATE TABLE environment.score_components(
     id          SERIAL PRIMARY KEY,
     entity_id   INT, 
     score       INT,
+    FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
+);--
+
+CREATE TABLE environment.touch_components(
+    id          SERIAL PRIMARY KEY,
+    entity_id   INT, 
+    last_update TIMESTAMP,
     FOREIGN KEY(entity_id) REFERENCES environment.entities(id) ON DELETE CASCADE
 );--
 
@@ -231,7 +237,7 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
             col.green,
             col.blue,
             score.score,
-            GREATEST(pc.last_update, mc.last_update, tc.last_update, ext.last_update, col.last_update)
+            GREATEST(pc.last_update, mc.last_update, tc.last_update, ext.last_update, col.last_update, touch.last_update)
         FROM 
             environment.entities AS e 
             LEFT JOIN environment.position_components AS pc 
@@ -246,6 +252,8 @@ CREATE VIEW environment.entity_components(entity_id, x, y, z, width, height, cen
               ON ext.entity_id = e.id
             LEFT JOIN environment.colour_components AS col 
               ON col.entity_id = e.id
+            LEFT JOIN environment.touch_components AS touch
+              ON touch.entity_id = e.id
             LEFT JOIN environment.score_components AS score 
               ON score.entity_id = e.id
 );--
@@ -580,6 +588,15 @@ CREATE VIEW environment.collisions(eid1, eid2, type1, type2) AS (
 ---------------------------------------------------------------
 -- FUNCTIONS
 ---------------------------------------------------------------
+-- akin to UNIX touch: updates 
+CREATE FUNCTION environment.touch(_eid INT)
+RETURNS VOID AS $$
+    UPDATE environment.touch_components 
+        SET last_update = NOW()
+    WHERE 
+        entity_id = _eid
+$$ LANGUAGE sql;--
+
 CREATE FUNCTION environment.start_towards(_eid INT, _pos POINT)
 RETURNS VOID AS $$
     WITH 
@@ -678,7 +695,10 @@ RETURNS INT AS $$
     col AS (
         INSERT INTO environment.colour_components(entity_id, red, green, blue) (VALUES ((SELECT eid FROM new_entity), _red, _green, _blue))
     ),
-    score AS (
+    touch AS (
+        INSERT INTO environment.touch_components(entity_id, last_update) (VALUES ((SELECT eid FROM new_entity), NOW()))
+    ),
+    score AS ( -- this might be better in create_player
         INSERT INTO environment.score_components(entity_id, score) (VALUES ((SELECT eid FROM new_entity), 0))
     )
     SELECT eid FROM new_entity    
