@@ -14,6 +14,13 @@ export interface Entity {
     type: "pacman" | "ghost"
 }
 
+interface GhostType {
+    dfa: string;
+    r: number;
+    g: number;
+    b: number;
+}
+
 export class Environment extends db.DBUnit {
     public constructor(db: db.PostgresqlConnection) {
         super(db, "./src/db/sql/environment.sql");
@@ -63,6 +70,20 @@ export class Environment extends db.DBUnit {
 
         return (await this.func(`environment.create_ghost`, [db.optional(x), db.optional(y), r, g, b, db.str(dfa)]))[0].id;
         //return this.createEntity("ghost", x, y, 30, 30, {speed: 0.03, controller: "ai", dfa: dfa});
+    }
+
+    private async spawnGhost(type: GhostType, count: number) {
+        for(let i = 0; i < count; i++) {
+            await this.createGhost(type);
+        }
+    }
+
+    public async spawnWanderer(count = 1) {
+        return this.spawnGhost({dfa: "wandering", r:121, g:224, b:156}, count);
+    }
+
+    public async spawnAggressor(count = 1) {
+        return this.spawnGhost({dfa: "aggressive", r:255, g:0, b:0}, count);
     }
 
     private createMap(w: number, h: number): Promise<void> {

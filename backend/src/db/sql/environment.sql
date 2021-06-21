@@ -126,10 +126,11 @@ INSERT INTO environment.game_state(level, checkpoint) (VALUES (1, now()));--
 
 
 CREATE TABLE environment.cells(
-    id       SERIAL PRIMARY KEY,
-    x        INT, 
-    y        INT, 
-    passable BOOLEAN, 
+    id           SERIAL PRIMARY KEY,
+    x            INT, 
+    y            INT, 
+    passable     BOOLEAN, 
+    bounding_box BOX GENERATED ALWAYS AS (BOX(POINT(x + 0.1, y + 0.1), POINT(x + 0.9, y + 0.9))) STORED,
     UNIQUE(x, y)
 );--
         
@@ -633,6 +634,23 @@ RETURNS VOID AS $$
         entity_id = _eid
 $$ LANGUAGE sql;--
 
+-- collisions for each entity if they continue with their current trajectory
+CREATE VIEW environment.projected_wall_collisions(entity_id) AS (
+    SELECT DISTINCT ON (pc.entity_id)
+        pc.entity_id
+    FROM
+        environment.position_components AS pc
+        JOIN environment.movement_components AS mc
+          ON pc.entity_id = mc.entity_id
+        JOIN environment.extent_components AS ec 
+          ON ec.entity_id = mc.entity_id
+        JOIN environment.cells AS c 
+          ON (NOT c.passable) 
+              AND BOX(POINT(pc.x + mc.ẟx, pc.y + mc.ẟy), POINT(pc.x + mc.ẟx + ec.width, pc.y + mc.ẟy + ec.height)) && c.bounding_box
+    WHERE
+        (mc.ẟx, mc.ẟy) <> (0,0) -- to filter out unmoving entities
+);--
+
 CREATE FUNCTION environment.update_positions()
 RETURNS VOID AS $$
     WITH upd(entity_id, new_x, new_y) AS (
@@ -644,11 +662,10 @@ RETURNS VOID AS $$
             environment.position_components AS pc
             JOIN environment.movement_components AS mc
               ON pc.entity_id = mc.entity_id
-            JOIN environment.cells AS c 
-              ON ROUND(pc.x + mc.ẟx + 0) = c.x AND 
-                 ROUND(pc.y + mc.ẟy + 0) = c.y
+            LEFT JOIN environment.projected_wall_collisions AS col
+              ON pc.entity_id = col.entity_id
         WHERE 
-            c.passable
+            col.entity_id IS NULL       -- those without any collisions
     )
     UPDATE 
         environment.position_components AS pc
@@ -720,7 +737,7 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION environment.create_player(_x INT, _y INT, _controller TEXT)
 RETURNS INT AS $$
-    SELECT environment.create_entity('pacman', _x, _y, 1, 0.5, 0.5, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
+    SELECT environment.create_entity('pacman', _x, _y, 1, 0.4, 0.4, 0, 0, 0.04, _controller, (random() * 255)::INT, (random() * 255)::INT, (random() * 255)::INT) AS id
 $$ LANGUAGE sql;--
 
 
@@ -731,7 +748,7 @@ $$ LANGUAGE sql;--
 CREATE FUNCTION environment.create_ghost(_x INT, _y INT, _r INT, _g INT, _b INT, _dfa TEXT)
 RETURNS INT AS $$
     WITH 
-    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 0.5, 0.5, 0, 0, 0.03, 'ai', _r, _g, _b)),
+    entity(id) AS (SELECT environment.create_entity('ghost', _x, _y, 1, 0.98, 0.98, 0, 0, 0.03, 'ai', _r, _g, _b)),
     dfa_setup(id) AS (SELECT dfa.setup_entity(entity.id, _dfa) FROM entity)
     SELECT entity.id FROM entity CROSS JOIN dfa_setup
 $$ LANGUAGE sql;--

@@ -155,19 +155,7 @@ $$ LANGUAGE sql;--
 
 CREATE FUNCTION dfa.cond_movement_is_blocked(_eid INT)
 RETURNS BOOLEAN AS $$
-    SELECT
-        COUNT(*) > 0
-        --NOT (COALESCE (c.passable, TRUE))
-    FROM 
-        environment.entity_components AS ec
-        JOIN environment.cells AS c
-          --ON c.x BETWEEN ec.x + ec.ẟx AND ec.x + ec.ẟx + ec.width OR
-          --   c.y BETWEEN ec.y + ec.ẟy AND ec.y + ec.ẟy + ec.height
-          ON ROUND(ec.x + ec.ẟx + 0.0) = c.x AND 
-             ROUND(ec.y + ec.ẟy + 0.0) = c.y
-    WHERE 
-        ec.entity_id = _eid
-        AND NOT c.passable
+    SELECT COUNT(*) > 0 FROM environment.projected_wall_collisions AS proj WHERE proj.entity_id = _eid
 $$ LANGUAGE sql;--
 
 
