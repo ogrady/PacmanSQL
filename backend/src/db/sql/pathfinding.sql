@@ -1,5 +1,5 @@
-DROP SCHEMA IF EXISTS pathfinding CASCADE;
-CREATE SCHEMA pathfinding;
+DROP SCHEMA IF EXISTS pathfinding CASCADE;--
+CREATE SCHEMA pathfinding;--
 
 CREATE TABLE pathfinding.node_list(
     id SERIAL PRIMARY KEY,

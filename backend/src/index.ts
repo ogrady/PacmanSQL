@@ -49,6 +49,7 @@ async function main() {
     await pacdb.mapgeneration.generateMap(4);
 
     await pacdb.environment.spawnWanderer();
+    await pacdb.environment.spawnAggressor();
 
     //await reader.readMap(pacdb, "./data/map.txt");
 

@@ -1,4 +1,4 @@
-DROP SCHEMA IF EXISTS environment CASCADE;
+DROP SCHEMA IF EXISTS environment CASCADE;--
 CREATE SCHEMA environment;--
 
 -- https://stackoverflow.com/a/1036010

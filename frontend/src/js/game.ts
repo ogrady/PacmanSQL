@@ -10,7 +10,8 @@ class Game {
                 { name : "pellet", type : "audio", src : "data/sfx/" },
 			],
             score : 0,
-            resolution: [600,540],
+            //resolution: [600,540],
+            resolution: [700,700]
         };
     }
 }

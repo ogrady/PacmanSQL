@@ -1,6 +1,6 @@
 -- note to self: you can use modifying statements in WR by encapsulating them in a UDF and SELECTing from them
-DROP SCHEMA IF EXISTS mapgen CASCADE;
-CREATE SCHEMA mapgen;
+DROP SCHEMA IF EXISTS mapgen CASCADE;--
+CREATE SCHEMA mapgen;--
 
 
 CREATE OR REPLACE FUNCTION the_func(acc anyelement, x anyelement) RETURNS anyelement AS $$
@@ -365,7 +365,7 @@ RETURNS VOID AS $$
         SELECT 
             w.x,
             h.y,
-            3,
+            2, -- wall
             2 -- priority. Whatever is already taken up by the actual tiles has high priority (1), map borders are only considered if nothing else takes up that space
         FROM 
             generate_series(0, (SELECT MAX(x) * 3 + 4 FROM mapgen.module_map)) AS w(x),
@@ -401,8 +401,8 @@ RETURNS VOID AS $$
 $$ LANGUAGE sql;--
 
 ----- TESTING
-INSERT INTO mapgen.tiles(value) (VALUES
-    ('□'), ('■'), ('■')
+INSERT INTO mapgen.tiles(id, value) (VALUES
+    (1, '□'), (2, '■')
 );
 
 insert into mapgen.compatible_tiles(this_id, that_id, frequency) (values
@@ -480,8 +480,6 @@ REFRESH MATERIALIZED VIEW mapgen.edge_compatibility;
 
 
 ----- FUNCTEST
-
---select setseed(0.6);
 
 --SELECT mapgen.generate_map(10);
 --select * from mapgen.map_pretty;

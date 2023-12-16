@@ -1,5 +1,5 @@
-DROP SCHEMA IF EXISTS dfa CASCADE;
-CREATE SCHEMA dfa;
+DROP SCHEMA IF EXISTS dfa CASCADE;--
+CREATE SCHEMA dfa;--
 
 ---------------------------------------------------------------
 -- TABLES

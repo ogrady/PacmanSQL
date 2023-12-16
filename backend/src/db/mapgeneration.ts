@@ -17,6 +17,7 @@ export class Mapgeneration extends db.DBUnit {
         for(const [x, y, tid] of module) {
             await this.exec(`INSERT INTO mapgen.module_contents(module_id, x, y, tile_id) (VALUES (${mid}, ${x}, ${y}, ${tid}))`);
         }
+        console.log(`added module ${mid}`);
     }
 
     public async refreshCompatibility(): Promise<void> {
